@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+ui/node_modules/
+
+# Build output
+dist/
+ui/.output/
+ui/.nuxt/
+ui/.data/
+
+# Secrets — Stitch API key lives here, never commit it
+.vscode/mcp.json
+
+# OS
+.DS_Store
