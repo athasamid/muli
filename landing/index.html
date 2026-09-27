@@ -389,10 +389,11 @@
       dan open-source), jadi macOS akan menampilkan peringatan sekali di awal. Cara membukanya:
     </p>
     <ol>
-      <li><strong>Klik kanan</strong> ikon Muli di folder Applications → pilih <strong>Open</strong> → klik <strong>Open</strong> lagi.</li>
-      <li>Jika masih ditolak: buka <strong>System Settings → Privacy &amp; Security</strong>, gulir ke bawah, lalu klik <strong>Open Anyway</strong>.</li>
+      <li>Seret Muli ke folder <strong>Applications</strong>, lalu buka. Jika macOS memblokirnya:</li>
+      <li><strong>macOS 15 (Sequoia):</strong> buka <strong>System Settings → Privacy &amp; Security</strong>, gulir ke bawah, klik <strong>Open Anyway</strong>.</li>
+      <li><strong>macOS 14 ke bawah:</strong> <strong>klik kanan</strong> ikon Muli → <strong>Open</strong> → klik <strong>Open</strong> lagi.</li>
     </ol>
-    <p style="margin-top:8px">Ini hanya perlu dilakukan sekali.</p>
+    <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
   </div>
 </section>
 

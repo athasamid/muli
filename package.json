@@ -37,6 +37,7 @@
       "**/node_modules/node-pty/**"
     ],
     "npmRebuild": true,
+    "afterPack": "scripts/adhoc-sign.js",
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.utilities",
