@@ -1,6 +1,6 @@
 {
   "name": "muli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop companion app for Mole — clean your Mac without touching the terminal",
   "main": "electron/main.js",
   "scripts": {
