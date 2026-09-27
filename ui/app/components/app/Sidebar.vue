@@ -20,15 +20,15 @@ const groups = [
     items: [
       { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
       { label: 'Clean', icon: Trash2, href: '/dashboard' },
-      { label: 'Applications', icon: AppWindow, soon: true },
-      { label: 'Disk', icon: HardDrive, soon: true },
-      { label: 'Optimize', icon: Gauge, soon: true },
+      { label: 'Uninstall', icon: AppWindow, href: '/uninstall' },
+      { label: 'Disk', icon: HardDrive, href: '/disk' },
+      { label: 'Optimize', icon: Gauge, href: '/optimize' },
     ],
   },
   {
     label: 'Utilities',
     items: [
-      { label: 'History', icon: History, soon: true },
+      { label: 'History', icon: History, href: '/history' },
     ],
   },
 ]

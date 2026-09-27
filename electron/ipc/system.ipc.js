@@ -39,6 +39,28 @@ module.exports = function registerSystemIpc() {
         }
     })
 
+    ipcMain.handle('system:disks', () => new Promise((resolve, reject) => {
+        execFile('/bin/df', ['-kP'], (err, stdout) => {
+            if (err) return reject(err)
+            const disks = stdout.trim().split('\n').slice(1).map((line) => {
+                const parts = line.trim().split(/\s+/)
+                if (parts.length < 6) return null
+                const [device, total, used, free, capacity, ...mountParts] = parts
+                const mount = mountParts.join(' ')
+                if (!mount.startsWith('/') || device.startsWith('map ')) return null
+                return {
+                    device,
+                    mount,
+                    total: Number(total) * 1024,
+                    used: Number(used) * 1024,
+                    free: Number(free) * 1024,
+                    capacity
+                }
+            }).filter(Boolean)
+            resolve(disks)
+        })
+    }))
+
     ipcMain.handle('system:stats', async () => {
         let disk = null
         try {

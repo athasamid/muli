@@ -9,6 +9,8 @@
     "dev": "concurrently \"npm run dev:ui\" \"wait-on http://localhost:3000 && npm run dev:electron\"",
     "build:ui": "cd ui && npm run build",
     "dist:mac": "npm run build:ui && electron-builder --mac",
+    "release": "./scripts/release.sh",
+    "deploy:landing": "./scripts/release.sh --landing-only",
     "postinstall": "electron-rebuild -f -w node-pty"
   },
   "keywords": [

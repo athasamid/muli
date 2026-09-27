@@ -9,13 +9,14 @@ function read() {
         if (!fs.existsSync(STORE_FILE)) return {}
         return JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'))
     } catch {
-        // Corrupt store — start fresh rather than crash on every get()
         return {}
     }
 }
 
 function write(data) {
-    fs.writeFileSync(STORE_FILE, JSON.stringify(data))
+    const tempFile = `${STORE_FILE}.tmp`
+    fs.writeFileSync(tempFile, JSON.stringify(data))
+    fs.renameSync(tempFile, STORE_FILE)
 }
 
 module.exports = {
@@ -26,5 +27,15 @@ module.exports = {
         const data = read()
         data[key] = value
         write(data)
+    },
+    appendHistory(entry) {
+        const data = read()
+        const history = Array.isArray(data.history) ? data.history : []
+        data.history = [entry, ...history].slice(0, 100)
+        write(data)
+    },
+    listHistory() {
+        const history = read().history
+        return Array.isArray(history) ? history : []
     }
 }

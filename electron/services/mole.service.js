@@ -6,6 +6,8 @@ const { BrowserWindow } = require('electron')
 const Storage = require('./storage.service')
 const stripAnsi = require('strip-ansi').default
 const { createCleanParser } = require('./mole.parser')
+const History = require('./history.service')
+const Log = require('./log.service')
 
 // GUI apps launched from Finder/Dock don't inherit the shell PATH
 // (they only get /usr/bin:/bin:/usr/sbin:/sbin), so mole's install
@@ -69,6 +71,7 @@ async function check() {
 // ============================================================
 
 function spawnPty(command, args, onData, onExit) {
+    Log.log('mole', 'spawn:', command, args.join(' '))
     const proc = pty.spawn(command, args, {
         name: 'xterm-256color',
         cols: 120,
@@ -76,12 +79,32 @@ function spawnPty(command, args, onData, onExit) {
         cwd: os.homedir(),
         env: buildEnv()
     })
-    proc.onData(onData)
-    proc.onExit(onExit)
+    proc.onData((chunk) => {
+        if (Log.enabled) {
+            for (const line of stripAnsi(chunk).split(/\r?\n|\r/)) {
+                const trimmed = line.trim()
+                if (trimmed) Log.log('mole', trimmed)
+            }
+        }
+        onData(chunk)
+    })
+    proc.onExit((event) => {
+        Log.log('mole', 'exit:', event.exitCode)
+        onExit(event)
+    })
+
+    // Every write into the pty is logged too; pass sensitive=true to keep
+    // the payload (e.g. a password) out of the terminal.
+    const write = proc.write.bind(proc)
+    proc.write = (data, sensitive) => {
+        Log.log('mole', 'write:', sensitive ? '(hidden)' : JSON.stringify(data))
+        write(data)
+    }
     return proc
 }
 
 function clean(event, opts = {}) {
+    const startedAt = new Date().toISOString()
     const win = BrowserWindow.fromWebContents(event.sender)
     if (activeProcess) return
 
@@ -109,9 +132,9 @@ function clean(event, opts = {}) {
             ({ exitCode }) => {
                 parser.flush()
                 activeProcess = null
-                win.webContents.send('mole:clean:end', {
-                    success: exitCode === 0
-                })
+                const success = exitCode === 0
+                History.record({ operation: 'clean', startedAt, success, dryRun: Boolean(opts.dryRun) })
+                win.webContents.send('mole:clean:end', { success })
             }
         )
     } catch (err) {
@@ -123,7 +146,194 @@ function clean(event, opts = {}) {
     }
 }
 
+function runOperation(event, operation, args = [], audit = {}, opts = {}) {
+    const startedAt = new Date().toISOString()
+    const win = BrowserWindow.fromWebContents(event.sender)
+    Log.log('mole', `${operation} requested:`, JSON.stringify(args))
+    if (activeProcess) {
+        Log.log('mole', `${operation} blocked: another operation is still running`)
+        win.webContents.send(`mole:${operation}:end`, {
+            success: false,
+            error: 'operation_in_progress'
+        })
+        return
+    }
+
+    const molePath = resolveMolePath()
+    if (!molePath) {
+        Log.log('mole', `${operation} blocked: mole binary not found`)
+        win.webContents.send(`mole:${operation}:end`, {
+            success: false,
+            error: 'mole_not_found'
+        })
+        return
+    }
+
+    let buffer = ''
+    let pendingLine = ''
+    let lastLine = ''
+
+    try {
+        activeProcess = spawnPty(
+            molePath,
+            [operation, ...args],
+            (chunk) => {
+                const text = stripAnsi(chunk)
+                buffer += text
+                win.webContents.send(`mole:${operation}:log`, text)
+                pendingLine += text
+                const lines = pendingLine.split(/\r?\n|\r/)
+                pendingLine = lines.pop() || ''
+                for (const line of lines) {
+                    const trimmed = line.trim()
+                    if (!trimmed) continue
+                    lastLine = trimmed
+                    win.webContents.send(`mole:${operation}:status`, { line: trimmed })
+                }
+
+                if (/Password:\s*$/.test(buffer.trim())) {
+                    buffer = ''
+                    Log.log('mole', `${operation}: password prompt -> asking UI`)
+                    win.webContents.send(`mole:${operation}:password`)
+                }
+
+                // The UI already asked the user before starting, so answer
+                // the CLI's own prompts automatically: first "Proceed? [y/N]",
+                // then the final "Enter confirm, ESC cancel" summary prompt.
+                if (opts.autoConfirm && /\[y\/N\]\s*$/i.test(buffer.trim())) {
+                    buffer = ''
+                    Log.log('mole', `${operation}: [y/N] prompt -> auto-answered y`)
+                    activeProcess.write('y\r')
+                }
+                if (opts.autoConfirm && /Enter\s+confirm[^\n]*ESC\s+cancel[^\n]*:\s*$/i.test(buffer.trim())) {
+                    buffer = ''
+                    Log.log('mole', `${operation}: final confirm prompt -> auto-answered enter`)
+                    activeProcess.write('\r')
+                }
+            },
+            ({ exitCode }) => {
+                activeProcess = null
+                const finalLine = pendingLine.trim()
+                if (finalLine) {
+                    lastLine = finalLine
+                    win.webContents.send(`mole:${operation}:status`, { line: finalLine })
+                }
+                const success = exitCode === 0
+                const error = success ? undefined : lastLine || `operation_failed_exit_${exitCode}`
+                History.record({ operation, startedAt, success, error, ...audit })
+                win.webContents.send(`mole:${operation}:end`, { success, error, exitCode })
+            }
+        )
+    } catch (err) {
+        activeProcess = null
+        win.webContents.send(`mole:${operation}:end`, {
+            success: false,
+            error: err.message
+        })
+    }
+}
+
+function optimize(event, opts = {}) {
+    runOperation(event, 'optimize', opts.dryRun ? ['--dry-run'] : [], {
+        dryRun: Boolean(opts.dryRun)
+    })
+}
+
+function listUninstallApps(event) {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const molePath = resolveMolePath()
+    Log.log('mole', 'uninstall list requested')
+    if (!molePath) {
+        Log.log('mole', 'uninstall list blocked: mole binary not found')
+        return Promise.reject(new Error('mole_not_found'))
+    }
+    if (activeProcess) {
+        Log.log('mole', 'uninstall list blocked: another operation is still running')
+        return Promise.reject(new Error('operation_in_progress'))
+    }
+
+    // mo emits the JSON list only when stdout is NOT a TTY, but live spinner
+    // progress on stderr only when stderr IS one. Running it in a pty with
+    // stdout redirected to a temp file gives both: progress lines stream to
+    // the UI while the JSON lands in the file.
+    const outFile = path.join(os.tmpdir(), `muli-uninstall-list-${Date.now()}.json`)
+
+    return new Promise((resolve, reject) => {
+        let pendingLine = ''
+        let lastLine = ''
+
+        function emitStatus(chunk) {
+            pendingLine += stripAnsi(chunk)
+            const lines = pendingLine.split(/\r?\n|\r/)
+            pendingLine = lines.pop() || ''
+            for (const line of lines) {
+                const trimmed = line.trim()
+                if (!trimmed) continue
+                lastLine = trimmed
+                win.webContents.send('mole:uninstall:scan-status', { line: trimmed })
+            }
+        }
+
+        try {
+            activeProcess = spawnPty(
+                'sh',
+                ['-c', `'${molePath}' uninstall --list > '${outFile}'`],
+                emitStatus,
+                ({ exitCode }) => {
+                    activeProcess = null
+                    const finalLine = pendingLine.trim()
+                    if (finalLine) {
+                        lastLine = finalLine
+                        win.webContents.send('mole:uninstall:scan-status', { line: finalLine })
+                    }
+
+                    let output = ''
+                    try {
+                        output = fs.readFileSync(outFile, 'utf8')
+                    } catch {
+                        // scan failed before producing output
+                    }
+                    try {
+                        fs.unlinkSync(outFile)
+                    } catch {
+                        // never created, or already gone
+                    }
+
+                    if (exitCode !== 0) {
+                        return reject(new Error(lastLine || `scan_failed_exit_${exitCode}`))
+                    }
+                    try {
+                        const apps = JSON.parse(output)
+                        Log.log('mole', `uninstall list: ${apps.length} apps`)
+                        resolve(apps)
+                    } catch {
+                        Log.log('mole', 'uninstall list: invalid JSON output', output.slice(0, 200))
+                        reject(new Error(lastLine || 'scan_invalid_output'))
+                    }
+                }
+            )
+        } catch (err) {
+            activeProcess = null
+            reject(err)
+        }
+    })
+}
+
+function uninstall(event, appNames) {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!Array.isArray(appNames) || appNames.length === 0) {
+        win.webContents.send('mole:uninstall:end', {
+            success: false,
+            error: 'no_apps_selected'
+        })
+        return
+    }
+
+    runOperation(event, 'uninstall', appNames, { targets: appNames }, { autoConfirm: true })
+}
+
 function install(event) {
+    const startedAt = new Date().toISOString()
     const win = BrowserWindow.fromWebContents(event.sender)
     if (activeProcess) return
 
@@ -148,6 +358,7 @@ function install(event) {
                 activeProcess = null
 
                 if (exitCode !== 0) {
+                    History.record({ operation: 'install', startedAt, success: false })
                     win.webContents.send('mole:install:end', { success: false })
                     return
                 }
@@ -155,17 +366,20 @@ function install(event) {
                 const detected = detectMole()
                 if (detected) {
                     Storage.set('molePath', detected)
+                    History.record({ operation: 'install', startedAt, success: true })
                     win.webContents.send('mole:install:end', {
                         success: true,
                         path: detected
                     })
                 } else {
+                    History.record({ operation: 'install', startedAt, success: false })
                     win.webContents.send('mole:install:end', { success: false })
                 }
             }
         )
     } catch (err) {
         activeProcess = null
+        History.record({ operation: 'install', startedAt, success: false, error: err.message })
         win.webContents.send('mole:install:end', {
             success: false,
             error: err.message
@@ -179,7 +393,7 @@ function install(event) {
 
 function sendPassword(event, password) {
     if (!activeProcess || typeof password !== 'string') return
-    activeProcess.write(password + '\r')
+    activeProcess.write(password + '\r', true)
     password = null
 }
 
@@ -195,6 +409,7 @@ function sendSkip() {
 
 function cancel() {
     if (!activeProcess) return
+    Log.log('mole', 'cancel: killing active process')
     try {
         activeProcess.kill()
     } catch {
@@ -207,6 +422,9 @@ module.exports = {
     check,
     install,
     clean,
+    optimize,
+    listUninstallApps,
+    uninstall,
     sendPassword,
     sendEnter,
     sendSkip,

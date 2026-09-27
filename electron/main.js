@@ -3,6 +3,7 @@ const path = require('path')
 const serve = require('electron-serve')
 const registerIpc = require('./ipc')
 const MoleService = require('./services/mole.service')
+const Updater = require('./services/updater.service')
 
 let win
 
@@ -46,6 +47,7 @@ app.whenReady().then(() => {
 
     createWindow()
     registerIpc()
+    if (!isDev) setTimeout(Updater.check, 3000)
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
