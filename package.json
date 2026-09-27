@@ -17,10 +17,10 @@
     "mole",
     "electron"
   ],
-  "author": "Chickin Indonesia <tools@chickinindonesia.com>",
+  "author": "Alby Technology <albyteknologi@gmail.com>",
   "license": "ISC",
   "build": {
-    "appId": "com.chickinindonesia.muli",
+    "appId": "com.albyteknologi.muli",
     "productName": "Muli",
     "artifactName": "${productName}-${arch}.${ext}",
     "directories": {
