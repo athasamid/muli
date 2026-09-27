@@ -8,6 +8,10 @@ let win
 
 const isDev = !app.isPackaged
 
+// The packaged app gets its name/icon from electron-builder (productName +
+// build/icon.png); this fixes the menu bar and Dock during development.
+app.setName('Muli')
+
 // Nuxt emits absolute asset paths (/_nuxt/...), which break under file://,
 // so the packaged build is served over the app:// protocol instead.
 const loadProd = isDev
@@ -32,6 +36,14 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    if (isDev && process.platform === 'darwin') {
+        try {
+            app.dock.setIcon(path.join(__dirname, '../build/icon.png'))
+        } catch {
+            // dev-only nicety
+        }
+    }
+
     createWindow()
     registerIpc()
 
