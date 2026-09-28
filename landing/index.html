@@ -104,7 +104,7 @@
   /* RADIUS SCALE. One value per role, so the page stops reading as assembled.
      Concentric rule: nested radius = outer radius - padding.
        999px pills   full-round controls (nav, badge, progress bars)
-        14px surfaces cards and panels (.feature, .step, .note, .window)
+        14px surfaces cards and panels (.feature, .step, .window)
         10px inset    elements sitting inside a surface (.ico, .mock-card)
          8px controls small filled controls (.btn, .brand-mark, .skip, .mock-btn)
          5px inline   code chips only */
@@ -146,12 +146,18 @@
     --space-section: 80px;
     --space-block: 48px;
     --space-tight: 32px;
+    /* Page gutter. Named because .wrap and the mobile .nav-inner override both
+       need to agree on it, and a literal in each place is how they drifted
+       apart in the first place. */
+    --space-gutter: 16px;
   }
-  /* Horizontal only. This used to be `padding: 0 20px`, which zeroed the
-     vertical padding on every element that also carries .wrap — including
-     header and section, whose own `padding` rules are less specific than a
-     class and were therefore silently dropped. */
-  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 24px; }
+  /* Horizontal only, and logical so a later `padding` shorthand cannot reset
+     it. This used to be `padding: 0 20px`, which zeroed the vertical padding
+     on every element that also carries .wrap — including header and section,
+     whose own `padding` rules are less specific than a class and were
+     therefore silently dropped. The mobile nav hit the same trap later, in
+     reverse: `padding: 8px 0` zeroed the padding declared here. */
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: var(--space-gutter); }
   :focus-visible {
     outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
@@ -372,17 +378,53 @@
     font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
   }
 
-  /* GATEKEEPER NOTE */
+  /* GATEKEEPER NOTE
+     Support content at the foot of the page, so it is set as an editorial
+     column rather than a callout: no card, no colored left border, no padding
+     box — just a hairline above it. The 3px accent border was the strongest
+     "assembled landing page" signal here, and this section does not need to
+     announce itself. The measure stays at 700px on purpose: 1040px of 14px
+     text is ~120 characters a line, well past the comfortable read.
+
+     Collapsed by default. Native <details> so keyboard and AT come free; the
+     height animation is progressive enhancement layered on top by script. */
   .note {
-    max-width: 700px; margin: 0 auto;
-    background: var(--card); border: 1px solid var(--border);
-    border-left: 3px solid var(--primary); border-radius: var(--r-surface); padding: 24px 32px;
+    max-width: 700px; margin: 40px auto 0;
+    border-top: 1px solid var(--border); padding-top: 16px;
   }
-  .note h3 {
+  .note summary {
     display: flex; align-items: center; gap: 8px;
-    font-size: 15px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px;
+    font-size: 15px; font-weight: 600; letter-spacing: -0.012em;
+    cursor: pointer; list-style: none; position: relative;
+    border-radius: var(--r-control); padding: 6px 8px; margin: -6px -8px;
   }
-  .note h3 svg { width: 17px; height: 17px; color: var(--amber); flex-shrink: 0; }
+  .note summary::-webkit-details-marker { display: none; }
+  /* The caret is a real element, not a ::after pseudo: a pseudo cannot take
+     aria-hidden, so a generated "+" lands inside the control's accessible name
+     and VoiceOver reads it as part of the label. The state itself is already
+     exposed by <details>, so the glyph is purely visual. */
+  .note summary > .caret {
+    margin-inline-start: auto; padding-inline-start: 8px;
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 14px; line-height: 1; color: var(--text-faint);
+  }
+  .note[open] summary > .caret::before { content: "\2212"; }
+  .note[open] summary > .caret::after  { content: none; }
+  /* separation from the body, applied only when open so the collapsed row
+     does not carry 16px of dead space */
+  .note[open] summary { margin-bottom: 16px; }
+  /* 44px touch target without a 44px-tall row: the pseudo is centred on the
+     summary and is part of the control, not a layer over it. */
+  .note summary::before {
+    content: ""; position: absolute; inset-block: 0;
+    inset-inline: -8px; min-height: 44px;
+  }
+  @media (hover: hover) { .note summary:hover { color: var(--text-muted); } }
+  .note svg { width: 17px; height: 17px; color: var(--amber); flex-shrink: 0; }
+  /* the animated element: JS pins height + overflow during the transition and
+     clears both on finish. Without JS this is a plain block and the details
+     still opens — it just snaps. */
+  .note-body { overflow: hidden; }
   .note p, .note li { font-size: 14px; line-height: 1.65; color: var(--text-muted); }
   .note ol { margin: 8px 0 0 24px; }
   .note li { margin-bottom: 8px; }
@@ -416,7 +458,11 @@
     }
     .side-item { white-space: nowrap; }
     .mock-cards { grid-template-columns: 1fr; }
-    .nav-inner { height: auto; min-height: 56px; padding: 8px 0; flex-wrap: wrap; gap: 8px; }
+    /* `padding: 8px 0` here silently zeroed the inline padding .wrap sets: the
+       shorthand resets all four sides, so the nav ran flush to both viewport
+       edges below 640px while every other element kept its gutter. Logical
+       properties keep the block padding without touching the inline. */
+    .nav-inner { height: auto; min-height: 56px; padding-block: 8px; flex-wrap: wrap; gap: 8px; }
   }
 </style>
 </head>
@@ -441,8 +487,8 @@
   <h1>Bersihkan Mac Anda<br><em>tanpa membuka Terminal</em></h1>
   <p class="sub">
     Muli adalah aplikasi desktop untuk <strong>Mole</strong>, pembersih macOS
-    open-source. Hapus cache, log, dan file sampah dengan satu klik.
-    Tanpa perintah, tanpa terminal.
+    open-source. Satu klik untuk membersihkan cache, log, dan file sampah
+    yang menumpuk.
   </p>
 
   <div class="cta">
@@ -462,6 +508,7 @@
     <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a36.36,36.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61a.37.37,0,0,1,.67,0L152,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></svg> <b id="stat-stars">-</b> stars di GitHub</span>
     <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M243.31,136,144,36.69A15.86,15.86,0,0,0,132.69,32H40a8,8,0,0,0-8,8v92.69A15.86,15.86,0,0,0,36.69,144L136,243.31a16,16,0,0,0,22.63,0l84.68-84.68a16,16,0,0,0,0-22.63Zm-96,96L48,132.69V48h84.69L232,147.31ZM96,84A12,12,0,1,1,84,72,12,12,0,0,1,96,84Z"/></svg> <b id="stat-version">-</b> versi terbaru</span>
   </div>
+
   </div>
 
   <div class="mock">
@@ -518,22 +565,22 @@
     <div class="feature">
       <div class="ico ico-blue"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M235.5,216.81c-22.56-11-35.5-34.58-35.5-64.8V134.73a15.94,15.94,0,0,0-10.09-14.87L165,110a8,8,0,0,1-4.48-10.34l21.32-53a28,28,0,0,0-16.1-37,28.14,28.14,0,0,0-35.82,16,.61.61,0,0,0,0,.12L108.9,79a8,8,0,0,1-10.37,4.49L73.11,73.14A15.89,15.89,0,0,0,55.74,76.8C34.68,98.45,24,123.75,24,152a111.45,111.45,0,0,0,31.18,77.53A8,8,0,0,0,61,232H232a8,8,0,0,0,3.5-15.19ZM67.14,88l25.41,10.3a24,24,0,0,0,31.23-13.45l21-53c2.56-6.11,9.47-9.27,15.43-7a12,12,0,0,1,6.88,15.92L145.69,93.76a24,24,0,0,0,13.43,31.14L184,134.73V152c0,.33,0,.66,0,1L55.77,101.71A108.84,108.84,0,0,1,67.14,88Zm48,128a87.53,87.53,0,0,1-24.34-42,8,8,0,0,0-15.49,4,105.16,105.16,0,0,0,18.36,38H64.44A95.54,95.54,0,0,1,40,152a85.9,85.9,0,0,1,7.73-36.29l137.8,55.12c3,18,10.56,33.48,21.89,45.16Z"/></svg></div>
       <h3>Bersih satu klik</h3>
-      <p>Cache aplikasi, log, file sementara, dan sampah developer dibersihkan otomatis. Dokumen pribadi tidak pernah disentuh.</p>
-    </div>
-    <div class="feature">
-      <div class="ico ico-green"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg></div>
-      <h3>Pratinjau dulu</h3>
-      <p>Mode Preview menunjukkan apa saja yang akan dihapus dan berapa ruang yang didapat, tanpa menghapus apa pun.</p>
+      <p>Dokumen pribadi tidak pernah disentuh. Cache, log, file sementara, dan sampah developer dibersihkan otomatis.</p>
     </div>
     <div class="feature">
       <div class="ico ico-amber"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z"/></svg></div>
       <h3>Aman &amp; privat</h3>
-      <p>Password Anda diteruskan langsung ke macOS dan tidak pernah disimpan. Semua berjalan lokal, tanpa telemetri.</p>
+      <p>Password diteruskan langsung ke macOS, tidak pernah disimpan. Semua berjalan lokal, tanpa telemetri.</p>
+    </div>
+    <div class="feature">
+      <div class="ico ico-green"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg></div>
+      <h3>Pratinjau dulu</h3>
+      <p>Lihat apa saja yang akan dihapus dan berapa ruang yang didapat, tanpa menghapus apa pun.</p>
     </div>
     <div class="feature">
       <div class="ico ico-blue"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.21,107.21,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.71,107.71,0,0,0-26.25-10.87,8,8,0,0,0-7.06,1.49L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.21,107.21,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.2,107.2,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0,1.49-7.06l2.64-23.72q1.48-1.56,3-3ZM192,180.16a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z"/></svg></div>
-      <h3>Mesin Mole</h3>
-      <p>Ditenagai <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">Mole</a>, pembersih macOS open-source yang teruji. Muli memasangnya otomatis untuk Anda.</p>
+      <h3>Siap otomatis</h3>
+      <p>Ditenagai <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">Mole</a>, pembersih macOS open-source. Muli memasangnya otomatis.</p>
     </div>
   </div>
 </section>
@@ -547,30 +594,31 @@
     </div>
     <div class="step">
       <h3>Pasang Mole otomatis</h3>
-      <p>Saat pertama dibuka, Muli memeriksa dan memasang mesin pembersih Mole untuk Anda, cukup klik Install.</p>
+      <p>Saat pertama dibuka, Muli memasang Mole untuk Anda. Cukup klik Install.</p>
     </div>
     <div class="step">
       <h3>Klik Clean</h3>
       <p>Lihat pratinjau, lalu klik Clean. Ruang penyimpanan kembali lega dalam hitungan detik.</p>
     </div>
   </div>
+
+    <details class="note">
+      <summary><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg> Muncul peringatan saat pertama membuka?<span class="caret" aria-hidden="true">+</span></summary>
+      <div class="note-body">
+  <p>
+    Muli belum ditandatangani dengan sertifikat Apple Developer, jadi macOS
+    akan menampilkan peringatan sekali di awal. Cara membukanya:
+  </p>
+  <ol>
+    <li>Seret Muli ke folder <strong>Applications</strong>, lalu buka. Jika macOS memblokirnya:</li>
+    <li><strong>macOS 15 (Sequoia):</strong> buka <strong>System Settings → Privacy &amp; Security</strong>, gulir ke bawah, lalu klik <strong>Open Anyway</strong>.</li>
+    <li><strong>macOS 14 ke bawah:</strong> <strong>klik kanan</strong> ikon Muli → <strong>Open</strong> → klik <strong>Open</strong> lagi.</li>
+  </ol>
+  <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
+      </div>
+    </details>
 </section>
 
-<section class="wrap">
-  <div class="note">
-    <h3><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236,104.47l-32-7.93a79.66,79.66,0,0,0-13.86-33.37l19.83-25.79a8,8,0,0,0,1.48-9.59,79.23,79.23,0,0,0-65.89-43.69,8,8,0,0,0-8.4,3.85l-11.78,29a79.11,79.11,0,0,0-31.75,0L82,11.36a8,8,0,0,0-8.4-3.85,79.23,79.23,0,0,0-65.89,43.69,8,8,0,0,0,1.48,9.59l19.83,25.79a79.66,79.66,0,0,0-13.86,33.37l-32,7.93a8,8,0,0,0-5.39,7.4v73.56a8,8,0,0,0,5.39,7.4l32,7.93a79.51,79.51,0,0,0,7.36,22.97l-19.83,25.79a8,8,0,0,0,1.48,9.59,79.23,79.23,0,0,0,65.89,43.69,8,8,0,0,0,8.4-3.85l11.77-29a79.09,79.09,0,0,0,31.76,0l11.78,29a8,8,0,0,0,8.4,3.85,79.23,79.23,0,0,0,65.89-43.69,8,8,0,0,0-1.48-9.59l-19.83-25.79a79.51,79.51,0,0,0,7.36-22.97l32-7.93A8,8,0,0,0,241.39,185V111.44a8,8,0,0,0-5.39-6.97ZM128,188a52,52,0,1,1,52-52A52.06,52.06,0,0,1,128,188Zm37.78-132.68a20,20,0,1,1-20-20A20,20,0,0,1,165.78,55.32Z"/></svg> Muncul peringatan saat pertama membuka?</h3>
-    <p>
-      Muli belum ditandatangani dengan sertifikat Apple Developer (aplikasi ini gratis
-      dan open-source), jadi macOS akan menampilkan peringatan sekali di awal. Cara membukanya:
-    </p>
-    <ol>
-      <li>Seret Muli ke folder <strong>Applications</strong>, lalu buka. Jika macOS memblokirnya:</li>
-      <li><strong>macOS 15 (Sequoia):</strong> buka <strong>System Settings → Privacy &amp; Security</strong>, gulir ke bawah, klik <strong>Open Anyway</strong>.</li>
-      <li><strong>macOS 14 ke bawah:</strong> <strong>klik kanan</strong> ikon Muli → <strong>Open</strong> → klik <strong>Open</strong> lagi.</li>
-    </ol>
-    <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
-  </div>
-</section>
 </main>
 
 <footer>
@@ -608,6 +656,94 @@
       document.getElementById('stat-version').textContent = latest ? latest.tag_name : '-';
       document.getElementById('stats').hidden = false;
     }).catch(function () { /* stats are optional, keep them hidden */ });
+  })();
+
+  // GATEKEEPER NOTE — smooth open/close.
+  // Native <details> handles the semantics; this only animates the height,
+  // which CSS cannot transition on a display-toggled element. Everything here
+  // is enhancement: with JS off, or motion reduced, the details still opens,
+  // it just snaps. Duration and curve match .btn on this page.
+  (function () {
+    var d = document.querySelector('.note');
+    if (!d) return;
+    var body = d.querySelector('.note-body');
+    var DUR = 220;
+    var EASE = 'cubic-bezier(.2,0,0,1)';
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var anim = null;
+
+    // Intent is tracked here, never inferred from d.open. While an animation
+    // is in flight the attribute still holds the PREVIOUS state, so a click
+    // that means "reopen" would otherwise read d.open and compute "close".
+    var want = d.open;
+    // The height to animate from and to. Measured, not read off scrollHeight:
+    // the body is pinned by an inline height for the duration of the
+    // animation, so scrollHeight reports the pinned value, not the live one.
+    var full = 0;
+
+    function settle() {
+      body.style.height = '';
+      body.style.overflow = '';
+      anim = null;
+    }
+
+    function stop() {
+      if (anim) { anim.cancel(); anim = null; }
+      settle();
+    }
+
+    function render() {
+      stop();
+      if (reduced.matches || !body.animate) {
+        // Snap, but never leave the body pinned: a details that reports open
+        // while rendering at zero height hides its own content from AT.
+        d.open = want;
+        settle();
+        return;
+      }
+      if (want) {
+        d.open = true;
+        body.style.overflow = 'hidden';
+        body.style.height = '0px';
+        anim = body.animate(
+          [{ height: '0px', opacity: 0.4 }, { height: full + 'px', opacity: 1 }],
+          { duration: DUR, easing: EASE }
+        );
+      } else {
+        d.open = true; // stay open so the body keeps a box to animate
+        body.style.overflow = 'hidden';
+        body.style.height = full + 'px';
+        anim = body.animate(
+          [{ height: full + 'px', opacity: 1 }, { height: '0px', opacity: 0.4 }],
+          { duration: DUR, easing: EASE }
+        );
+      }
+      anim.onfinish = function () {
+        // Closing is the only direction that touches the attribute on the way
+        // out; preventDefault above suppressed the browser's own toggle.
+        if (!want) d.open = false;
+        settle();
+      };
+    }
+
+    d.addEventListener('click', function (e) {
+      if (e.target.closest('summary') === null) return;
+      e.preventDefault();
+      // Measure the live height before anything is pinned, so an interrupted
+      // animation restarts from where the panel actually is on screen.
+      full = body.getBoundingClientRect().height;
+      want = !want;
+      render();
+    });
+
+    // Keyboard activation on <summary> fires a click, so it is covered above.
+    // Toggling the OS motion preference mid-animation must not strand the
+    // panel in a pinned intermediate state.
+    reduced.addEventListener('change', function () {
+      if (anim) { anim.cancel(); anim = null; }
+      if (!want) d.open = false;
+      settle();
+    });
   })();
 
   // Best-effort chip detection to highlight the right download.
