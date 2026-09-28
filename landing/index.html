@@ -535,9 +535,14 @@
        body copy directly under a much larger title, and at 32px the pair
        separates far enough to stop reading as one block. Everywhere else on
        the page the h2 is followed by a card grid or a step rail, which needs
-       the wider gap. */
-    margin-bottom: 24px; line-height: 1.12;
-    max-width: 22ch; margin-inline: auto;
+       the wider gap.
+
+       Nothing else is set here on purpose. This used to carry `max-width:
+       22ch` and `line-height: 1.12`, which made it the only title on the page
+       wrapped to two lines, forced by a <br>, in a 585px column while the
+       other two ran the full 1008px. Same words, visibly different component.
+       Letting it inherit is what makes the three read as one set. */
+    margin-bottom: 24px;
   }
   .closer-sub {
     max-width: 52ch; margin: 0 auto;
@@ -811,7 +816,7 @@
 <section class="closer">
   <div class="closer-panel">
     <div class="wrap">
-      <h2>Sudah tahu caranya.<br>Tinggal sekali klik.</h2>
+      <h2>Mac Anda bersih, dalam sekali klik</h2>
       <p class="closer-sub">
         Dua klik dari selesai: seret ke Applications, lalu klik Clean.
         Tidak perlu akun, tidak perlu Terminal, tidak perlu langganan.
