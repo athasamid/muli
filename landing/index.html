@@ -359,7 +359,18 @@
      The section is full-bleed; the inner .wrap restores the 1040px measure. */
   .band { padding-inline: 0; background: var(--card); }
   h2 {
-    text-align: center; font-size: clamp(24px, 3.6vw, 32px);
+    text-align: center;
+    /* Section titles were reading a size too quiet against the h1 above them.
+       Scaled 120%: 24/32px became 28.8/38.4px, and the viewport term went with
+       it (3.6vw -> 4.32vw) so the whole curve moves rather than just its
+       endpoints — scaling only the min and max would have left mid-size
+       viewports unchanged and produced a title that jumped at the breakpoints.
+
+       Ceiling check: h1 tops out at 52px, so the new 38.4px h2 leaves 13.6px
+       between them. That is enough separation to keep the hierarchy readable;
+       above ~40px the two would start reading as peers rather than as a page
+       headline and a section label. */
+    font-size: clamp(28.8px, 4.32vw, 38.4px);
     font-weight: 700; letter-spacing: -0.028em; line-height: 1.2;
     text-wrap: balance;
     margin-bottom: var(--space-tight);
@@ -517,7 +528,15 @@
   .closer { padding-block: 0; padding-inline: 0; }
   .closer-panel { padding-block: var(--space-section); text-align: center; }
   .closer-panel h2 {
-    color: var(--text); margin-bottom: 16px; line-height: 1.12;
+    color: var(--text);
+    /* 24px between the title and the description, per the section's spacing.
+       This is a deliberate step down from the page's --space-tight (32px)
+       that h2 carries everywhere else: here the description is two lines of
+       body copy directly under a much larger title, and at 32px the pair
+       separates far enough to stop reading as one block. Everywhere else on
+       the page the h2 is followed by a card grid or a step rail, which needs
+       the wider gap. */
+    margin-bottom: 24px; line-height: 1.12;
     max-width: 22ch; margin-inline: auto;
   }
   .closer-sub {
@@ -543,22 +562,10 @@
     color: var(--text-faint);
   }
   .closer-meta .sep { color: var(--border-strong); margin: 0 8px; }
-  /* This link measured a 17px tap target, which is the one genuinely small hit
-     area in the section — the two buttons are 68px.
-
-     The hit area is grown with an absolutely positioned pseudo-element rather
-     than padding-block on the link itself. Padding on an inline-block grows
-     the LINE BOX: at 12.5px/1.8 the row is 22.5px tall, so 10px of padding
-     each side pushed the inline box to 43px and re-flowed the paragraph to
-     1.89 rows, moving the whole panel. The overlay extends the clickable box
-     past the text without entering layout at all. */
-  .closer-meta a {
-    position: relative; display: inline-block;
-    color: var(--text-muted); font-weight: 500;
-    text-decoration-color: var(--border-strong); text-underline-offset: 3px;
-  }
-  .closer-meta a::after { content: ""; position: absolute; inset-block: -12px; inset-inline: -4px; }
-  @media (hover: hover) { .closer-meta a:hover { color: var(--text); } }
+  /* No link lives in this strip any more — "Dukung pengembangan" was here once
+     and is in the footer already, so the panel had no reason to repeat it. The
+     pseudo-element that grew that link's hit area went with it; this strip is
+     now static text and needs no rules beyond its own type. */
 
   footer {
     border-top: 1px solid var(--border);
@@ -823,8 +830,7 @@
 
       <p class="closer-meta">
         Gratis selamanya<span class="sep">&middot;</span>100% lokal, tanpa telemetri<span class="sep">&middot;</span>
-        <span class="mono">Muli <span id="closer-version">-</span></span><span class="sep">&middot;</span>
-        <a href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">Dukung pengembangan</a>
+        <span class="mono">Muli <span id="closer-version">-</span></span>
       </p>
     </div>
   </div>
