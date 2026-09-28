@@ -459,8 +459,14 @@
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
     font-size: 14px; line-height: 1; color: var(--text-faint);
   }
+  /* Both states are driven from ::before, never from a literal glyph in the
+     span's text. The span used to contain a real "+" character while the open
+     state prepended "−" via ::before, and a ::before inserts BEFORE an
+     element's own text, so opening the details rendered "−+" instead of "−".
+     `content: none` on a pseudo cannot suppress a real text node, which is
+     why the older ::after rule never fixed it. One source, one glyph. */
+  .note summary > .caret::before { content: "+"; }
   .note[open] summary > .caret::before { content: "\2212"; }
-  .note[open] summary > .caret::after  { content: none; }
   /* separation from the body, applied only when open so the collapsed row
      does not carry 16px of dead space */
   .note[open] summary { margin-bottom: 16px; }
@@ -711,7 +717,7 @@
   </div>
 
     <details class="note">
-      <summary><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg> Muncul peringatan saat pertama membuka?<span class="caret" aria-hidden="true">+</span></summary>
+      <summary><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg> Muncul peringatan saat pertama membuka?<span class="caret" aria-hidden="true"></span></summary>
       <div class="note-body">
   <p>
     Muli belum ditandatangani dengan sertifikat Apple Developer, jadi macOS
