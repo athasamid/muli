@@ -4,34 +4,73 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Muli</title>
-<meta name="description" content="Bersihkan Mac Anda tanpa membuka Terminal — aplikasi desktop untuk Mole, gratis dan open-source.">
+<meta name="description" content="Bersihkan Mac Anda tanpa membuka Terminal. Aplikasi desktop untuk Mole, gratis dan open-source.">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <style>
+  /* Self-hosted Geist + Geist Mono (fontsource latin subsets, woff2 only). */
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("fonts/geist-latin-400-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 500; font-display: swap;
+    src: url("fonts/geist-latin-500-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("fonts/geist-latin-600-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 700; font-display: swap;
+    src: url("fonts/geist-latin-700-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist Mono"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("fonts/geist-mono-latin-400-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist Mono"; font-style: normal; font-weight: 500; font-display: swap;
+    src: url("fonts/geist-mono-latin-500-normal.woff2") format("woff2");
+  }
+
   :root {
     --bg: #faf8fe;
-    --card: #ffffff;
+    --card: #fdfdfd;
+    /* recessed surface for code chips and other inset fills. --border is a
+       hairline, not a fill: at 8% black it is invisible on the dark card. */
+    --surface-sunken: #ebebeb;
     --text: #1a1b1f;
     --text-muted: #414755;
-    --text-faint: #717786;
-    --border: rgba(0, 0, 0, 0.07);
-    --primary: #0070eb;
-    --primary-deep: #0058bc;
+    --text-faint: #666c7a;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.14);
+    /* --primary is a FILL (white text sits on it); --accent-ink is the same hue
+       used as TEXT and as the focus ring. They need different lightness per
+       theme, so they are separate tokens rather than one reused value. */
+    --primary: #0062c8;
+    --primary-deep: #004a9e;
+    --accent-ink: #0062c8;
     --primary-soft: #d8e2ff;
     --green: #006e28;
     --green-soft: rgba(111, 251, 133, 0.35);
     --amber-soft: #ffdcbf;
     --amber: #894d00;
-    --terminal: #16171b;
     --shadow: 0 20px 50px -20px rgba(0, 40, 100, 0.25);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #1a1b1f;
       --card: #2f3034;
+      --surface-sunken: #1f2024;
       --text: #f1f0f5;
       --text-muted: #c1c6d7;
       --text-faint: #8a90a0;
       --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.24);
+      /* lifted for a dark ground: 3.74:1 as a fill boundary, 4.61:1 under white */
+      --primary: #0d74dd;
+      --primary-deep: #0a5fb4;
+      --accent-ink: #7cb2ff;
       --primary-soft: #004493;
       --green: #6ffb85;
       --green-soft: rgba(0, 83, 28, 0.6);
@@ -43,10 +82,15 @@
   :root[data-theme="dark"] {
     --bg: #1a1b1f;
     --card: #2f3034;
+    --surface-sunken: #1f2024;
     --text: #f1f0f5;
     --text-muted: #c1c6d7;
     --text-faint: #8a90a0;
     --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.24);
+    --primary: #0d74dd;
+    --primary-deep: #0a5fb4;
+    --accent-ink: #7cb2ff;
     --primary-soft: #004493;
     --green: #6ffb85;
     --green-soft: rgba(0, 83, 28, 0.6);
@@ -56,15 +100,83 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* RADIUS SCALE. One value per role, so the page stops reading as assembled.
+     Concentric rule: nested radius = outer radius - padding.
+       999px pills   full-round controls (nav, badge, progress bars)
+        14px surfaces cards and panels (.feature, .step, .window)
+        10px inset    elements sitting inside a surface (.ico, .mock-card)
+         8px controls small filled controls (.btn, .brand-mark, .skip, .mock-btn)
+         5px inline   code chips only */
+  :root {
+    --r-pill: 999px;
+    --r-surface: 14px;
+    --r-inset: 10px;
+    --r-control: 8px;
+    --r-inline: 5px;
+  }
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-    line-height: 1.55;
+    font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
   }
+  /* Mono is used only for numerals and short technical labels. */
+  .mono { font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
   a { color: inherit; }
-  .wrap { max-width: 1020px; margin: 0 auto; padding: 0 16px; }
+  /* SPACING SCALE — 8px grid.
+     Page-level rhythm only. Every step is a multiple of 8 so blocks stack on a
+     consistent baseline instead of drifting by odd values.
+       --space-section  vertical padding of a top-level section (80px)
+       --space-block    gap between stacked blocks inside a section
+       --space-tight    label-to-body gap under a section heading
+     Deliberately NOT on this grid, and why:
+       - 1px hairline borders: hairlines, not spacing.
+       - compact-control padding (6px 14px) and icon-label gaps (6/7px): these
+         are optically sized to their 12.5-15px labels and icons, not to the
+         page grid. Rounding them up makes controls chunky and gaps loose.
+       - the mockup window's internals: that is a picture of another app
+         rendered at 9-11.5px. The page grid does not govern fake UI.  */
+  :root {
+    --space-section: 80px;
+    --space-block: 48px;
+    --space-tight: 32px;
+    /* Page gutter. Named because .wrap and the mobile .nav-inner override both
+       need to agree on it, and a literal in each place is how they drifted
+       apart in the first place. */
+    --space-gutter: 16px;
+  }
+  /* Horizontal only, and logical so a later `padding` shorthand cannot reset
+     it. This used to be `padding: 0 20px`, which zeroed the vertical padding
+     on every element that also carries .wrap — including header and section,
+     whose own `padding` rules are less specific than a class and were
+     therefore silently dropped. The mobile nav hit the same trap later, in
+     reverse: `padding: 8px 0` zeroed the padding declared here. */
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: var(--space-gutter); }
+  :focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 2px;
+    border-radius: var(--r-control);
+  }
+  /* First focusable element on the page: moves past the nav straight to the
+     content, and is invisible until focused. */
+  .skip {
+    position: absolute; left: 8px; top: 8px; z-index: 20;
+    transform: translateY(-200%);
+    background: var(--card); color: var(--text);
+    padding: 8px 16px; border-radius: var(--r-control);
+    border: 1px solid var(--border-strong);
+    font-size: 14px; font-weight: 500; text-decoration: none;
+  }
+  .skip:focus { transform: translateY(0); }
+  @media (prefers-reduced-motion: no-preference) {
+    .skip { transition: transform .15s cubic-bezier(.2,0,0,1); }
+  }
 
   /* NAV */
   nav {
@@ -74,74 +186,119 @@
     border-bottom: 1px solid var(--border);
   }
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
   .brand-mark {
-    width: 28px; height: 28px; border-radius: 8px;
+    width: 28px; height: 28px; border-radius: var(--r-control);
     background: linear-gradient(135deg, var(--primary), var(--primary-deep));
     display: grid; place-items: center; color: #fff; font-size: 15px;
   }
   .nav-links { display: flex; align-items: center; gap: 8px; }
   .nav-gh, .nav-donate {
-    font-size: 13px; font-weight: 600; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500; text-decoration: none;
     color: var(--text-muted); padding: 7px 14px; border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--r-pill);
   }
   .nav-donate {
     color: var(--amber); border-color: transparent; background: var(--amber-soft);
   }
-  .nav-gh:hover, .nav-donate:hover { color: var(--text); }
+  /* Hover styling is gated: on touch a tapped link would otherwise keep the
+     hover treatment after the finger lifts. */
+  @media (hover: hover) {
+    .nav-gh:hover, .nav-donate:hover { color: var(--text); border-color: var(--border-strong); }
+  }
+  .nav-gh:active, .nav-donate:active { transform: translateY(1px); }
+  .nav-gh svg, .nav-donate svg { width: 15px; height: 15px; flex-shrink: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-gh, .nav-donate {
+      transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+    }
+  }
 
   /* LIVE STATS */
   .stats {
-    display: flex; justify-content: center; gap: 26px; flex-wrap: wrap;
-    margin-top: 22px; font-size: 13px; color: var(--text-muted);
+    display: flex; justify-content: center; gap: 32px; flex-wrap: wrap;
+    margin-top: 24px; font-size: 13px; color: var(--text-muted);
   }
   .stats span { display: inline-flex; align-items: center; gap: 6px; }
-  .stats b { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stats svg { width: 15px; height: 15px; color: var(--text-faint); flex-shrink: 0; }
+  .stats b { font-size: 15px; color: var(--text); font-weight: 600; }
 
-  /* HERO */
-  header { padding: 72px 0 40px; text-align: center; }
+  /* HERO
+     The copy block (badge -> stats) is its own flex group with a min-height, so
+     the title and CTA sit in the optical middle of the hero instead of being
+     pushed to the top by padding. The mockup stays below it as the "product
+     proof" beat. min-height uses svh so mobile browser chrome doesn't skew it.
+
+     The min-height is 46svh/400px, not the 56svh/520px it started at. It used
+     to reserve so much vertical space that the CTA and the mockup ended up
+     ~141px apart at desktop, and the two read as unrelated blocks. 400px keeps
+     the copy optically centred while letting the mockup sit close enough to
+     belong to the same moment. */
+  header { padding: var(--space-section) 0; text-align: center; }
+  .hero-copy {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; width: 100%;
+    min-height: min(46svh, 400px);
+  }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    font-size: 12.5px; font-weight: 500; color: var(--text-muted);
     border: 1px solid var(--border); background: var(--card);
-    padding: 6px 14px; border-radius: 999px; margin-bottom: 22px;
+    padding: 6px 14px; border-radius: var(--r-pill); margin-bottom: 24px;
   }
   .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #27C93F; }
   h1 {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    font-size: clamp(30px, 5.5vw, 48px);
-    font-weight: 800; letter-spacing: -0.025em; line-height: 1.12;
+    font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: clamp(32px, 5.6vw, 52px);
+    font-weight: 700; letter-spacing: -0.032em; line-height: 1.08;
+    text-wrap: balance;
   }
-  h1 em { font-style: normal; color: var(--primary); }
+  h1 em { font-style: normal; color: var(--accent-ink); }
   .sub {
-    max-width: 560px; margin: 18px auto 0;
-    font-size: 16px; color: var(--text-muted);
+    max-width: 54ch; margin: 24px auto 0;
+    font-size: 17px; line-height: 1.65; color: var(--text-muted);
+    text-wrap: pretty;
   }
-  .cta { margin-top: 32px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
   .btn {
     display: inline-flex; flex-direction: column; align-items: center;
-    text-decoration: none; border-radius: 14px; padding: 12px 26px;
-    font-weight: 700; font-size: 15px; line-height: 1.3;
-    transition: transform .12s ease, box-shadow .12s ease;
+    text-decoration: none; border-radius: var(--r-control); padding: 16px 24px;
+    font-weight: 600; font-size: 15px; line-height: 1.35;
   }
-  .btn:hover { transform: translateY(-1px); }
-  .btn small { font-size: 11px; font-weight: 500; opacity: .85; }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn {
+      transition: transform .14s cubic-bezier(.2,0,0,1), box-shadow .14s ease, border-color .14s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    /* press feedback: the skill's exact 0.96, not a full cancel of the hover */
+    .btn:active { transform: scale(0.96); }
+  }
+  .btn small { font-size: 12px; font-weight: 400; color: inherit; opacity: .78; }
   .btn-primary {
     background: linear-gradient(180deg, var(--primary), var(--primary-deep));
-    color: #fff; box-shadow: 0 8px 20px -8px rgba(0, 112, 235, .6);
+    color: #fff; box-shadow: 0 8px 20px -8px rgba(0, 98, 200, .5);
   }
+  .btn-primary:hover { box-shadow: 0 12px 26px -8px rgba(0, 98, 200, .6); }
   .btn-secondary {
     background: var(--card); color: var(--text);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-strong);
   }
-  .cta-note { margin-top: 14px; font-size: 12px; color: var(--text-faint); }
+  @media (hover: hover) {
+    .btn-secondary:hover { border-color: var(--text-faint); }
+  }
+  .cta-note { margin-top: 16px; font-size: 12.5px; color: var(--text-faint); }
 
-  /* MOCKUP */
-  .mock { margin: 48px auto 0; max-width: 780px; }
+  /* MOCKUP
+     margin-top is 32px. The 64px this replaced (48px margin + the slack the
+     old .hero-copy min-height gave back) read as disconnected, and 16px read as
+     too tight against the CTA note. 32px lands the cta-note -> window gap on
+     80px, which is one step on the 8px grid and holds as a single block
+     without reopening the void. */
+  .mock { margin: 32px auto 0; max-width: 780px; }
   .window {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
+    border-radius: var(--r-surface); box-shadow: var(--shadow); overflow: hidden;
     text-align: left;
   }
   .titlebar {
@@ -154,7 +311,7 @@
   .mock-side { border-right: 1px solid var(--border); padding: 14px 10px; font-size: 11.5px; }
   .side-item {
     display: flex; align-items: center; gap: 7px;
-    padding: 6px 9px; border-radius: 7px; color: var(--text-muted);
+    padding: 6px 9px; border-radius: var(--r-control); color: var(--text-muted);
   }
   .side-item.active { background: var(--primary-soft); color: var(--primary-deep); font-weight: 600; }
   :root[data-theme="dark"] .side-item.active { color: #adc6ff; }
@@ -166,107 +323,355 @@
   .mock-sub { font-size: 11px; color: var(--text-faint); margin-bottom: 12px; }
   .mock-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
   .mock-card {
-    border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+    border: 1px solid var(--border); border-radius: var(--r-inset); padding: 10px;
   }
   .mock-card .k { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
   .mock-card .v { font-size: 15px; font-weight: 800; margin: 3px 0 6px; }
-  .bar { height: 3px; border-radius: 99px; background: var(--border); overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 99px; }
+  .bar { height: 3px; border-radius: var(--r-pill); background: var(--border); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: var(--r-pill); }
   .mock-banner {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
+    border: 1px solid var(--border); border-radius: var(--r-inset); padding: 11px 13px;
   }
   .mock-banner .t { font-size: 12px; font-weight: 700; }
   .mock-banner .d { font-size: 10.5px; color: var(--text-faint); }
   .mock-btn {
     flex-shrink: 0; font-size: 11px; font-weight: 700; color: #fff;
-    background: var(--primary); border-radius: 8px; padding: 7px 13px;
+    background: var(--primary); border-radius: var(--r-control); padding: 7px 13px;
   }
 
-  /* SECTIONS */
-  section { padding: 56px 0; }
-  .sec-label {
-    text-align: center; font-size: 11px; font-weight: 700;
-    letter-spacing: .12em; text-transform: uppercase; color: var(--primary);
-    margin-bottom: 8px;
-  }
+  /* SECTIONS
+     Every top-level section gets the same generous block padding, so the page
+     reads as a stack of distinct blocks rather than one continuous column.
+     `scroll-margin-top` keeps the sticky nav from clipping an anchor target. */
+  section { padding-block: var(--space-section); scroll-margin-top: 56px; }
+  /* The steps section breaks the column out to the viewport edges and carries
+     the card fill, so the eye registers a change of scene between the feature
+     grid and the install steps instead of one continuous column. It is
+     --card, not a separate tint: the earlier dedicated band token had to live
+     between --bg and --card, a window so narrow the section read as either
+     invisible or muddy. Reusing the card fill states the intent outright (this
+     section IS a card) and lands on a value that already has a tested
+     relationship to the page. One caveat worth knowing: in light mode --card
+     is only 1.04:1 against --bg, so the separation there is carried by the
+     full-bleed edges rather than by contrast. That is a property of the light
+     palette, not of this rule.
+     The section is full-bleed; the inner .wrap restores the 1040px measure. */
+  .band { padding-inline: 0; background: var(--card); }
   h2 {
-    text-align: center; font-size: clamp(22px, 3.5vw, 30px);
-    font-weight: 800; letter-spacing: -0.02em; margin-bottom: 34px;
+    text-align: center;
+    /* Section titles were reading a size too quiet against the h1 above them.
+       Scaled 120%: 24/32px became 28.8/38.4px, and the viewport term went with
+       it (3.6vw -> 4.32vw) so the whole curve moves rather than just its
+       endpoints — scaling only the min and max would have left mid-size
+       viewports unchanged and produced a title that jumped at the breakpoints.
+
+       Ceiling check: h1 tops out at 52px, so the new 38.4px h2 leaves 13.6px
+       between them. That is enough separation to keep the hierarchy readable;
+       above ~40px the two would start reading as peers rather than as a page
+       headline and a section label. */
+    font-size: clamp(28.8px, 4.32vw, 38.4px);
+    font-weight: 700; letter-spacing: -0.028em; line-height: 1.2;
+    text-wrap: balance;
+    margin-bottom: var(--space-tight);
   }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
   .feature {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 22px;
+    border-radius: var(--r-surface); padding: 24px;
   }
   .feature .ico {
-    width: 38px; height: 38px; border-radius: 11px;
-    display: grid; place-items: center; font-size: 18px; margin-bottom: 13px;
+    width: 38px; height: 38px; border-radius: var(--r-inset);
+    display: grid; place-items: center; margin-bottom: 16px;
   }
-  .ico-blue { background: var(--primary-soft); }
-  .ico-green { background: var(--green-soft); }
-  .ico-amber { background: var(--amber-soft); }
-  .feature h3 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
-  .feature p { font-size: 13px; color: var(--text-muted); }
+  .feature .ico svg { width: 20px; height: 20px; }
+  /* icon foreground is --accent-ink, not --primary-deep: the tile is a soft
+     accent surface, and a fill-strength blue on it measured 1.47:1 in dark. */
+  .ico-blue { background: var(--primary-soft); color: var(--accent-ink); }
+  .ico-green { background: var(--green-soft); color: var(--green); }
+  .ico-amber { background: var(--amber-soft); color: var(--amber); }
+  .feature h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px; }
+  .feature p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
 
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: step; }
-  .step {
-    position: relative; background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 22px; counter-increment: step;
+  /* STEPS — numbered rail on the tinted .band.
+     These were originally identical to .feature: same 24px padding, same 14px
+     radius, same card fill and hairline. Four feature cards and three step
+     cards in a row of the same shape made the page read as one component
+     stacked twice.
+
+     First attempt at differentiating them was borderless open columns joined
+     by a floating hairline. It failed: with no container of its own the steps
+     had nothing to attach to, the line read as a stray rule rather than a
+     connector, and the section disappeared into the one below it. The fix is
+     the band, not the line. The section now owns a full-bleed tinted plane,
+     which is what gives the open columns an edge to sit against.
+
+     What survives from the first attempt is only the numeral treatment: mono,
+     large, in the accent ink, so the sequence leads. The connector is gone;
+     the band's own edges do that job. The features keep their cards, which is
+     correct there: they are peers with no order, so equal weight is honest. */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; counter-reset: step; }
+  .step { position: relative; counter-increment: step; }
+  /* The numeral is a real element, not a ::before on .step. It has to become a
+     grid item of .step in the narrow layout below, and a pseudo-element cannot
+     be placed as a grid item alongside real siblings reliably across browsers.
+     aria-hidden because the sequence is already conveyed by the h3 order and
+     the surrounding "Tiga langkah" heading. */
+  .step-num {
+    display: block;
+    /* Mono so the numerals read as an index rather than a heading. 28px +
+       weight 500 sits above the 15.5px h3 without shouting. */
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 28px; font-weight: 500; line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--accent-ink);
+    margin-bottom: 16px;
   }
-  .step::before {
-    content: counter(step);
-    display: grid; place-items: center;
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--primary); color: #fff;
-    font-size: 13px; font-weight: 800; margin-bottom: 13px;
-  }
-  .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
-  .step p { font-size: 13px; color: var(--text-muted); }
+  .step-num::before { content: counter(step); }
+  .step h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px; }
+  .step p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
   .step code {
-    font-family: "SF Mono", ui-monospace, Menlo, monospace;
-    font-size: 11.5px; background: var(--border); border-radius: 5px; padding: 1.5px 6px;
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
   }
 
-  /* GATEKEEPER NOTE */
+  /* GATEKEEPER NOTE
+     Support content at the foot of the page, so it is set as an editorial
+     column rather than a callout: no card, no colored left border, no padding
+     box — just a hairline above it. The 3px accent border was the strongest
+     "assembled landing page" signal here, and this section does not need to
+     announce itself. The measure stays at 700px on purpose: 1040px of 14px
+     text is ~120 characters a line, well past the comfortable read.
+
+     Collapsed by default. Native <details> so keyboard and AT come free; the
+     height animation is progressive enhancement layered on top by script. */
   .note {
-    max-width: 680px; margin: 0 auto;
-    background: var(--card); border: 1px solid var(--border);
-    border-left: 4px solid var(--primary); border-radius: 14px; padding: 20px 24px;
+    /* The summary row runs the full 1008px band column so it aligns with the
+       steps grid above it. The expanded body keeps its own 700px measure: at
+       full width, 14px text runs to roughly 120 characters a line, well past
+       comfortable reading. The cap lives on the body rather than the container
+       so the two concerns stay separate. */
+    margin: 48px 0 0;
+    border-top: 1px solid var(--border); padding-top: 16px;
   }
-  .note h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-  .note p, .note li { font-size: 13px; color: var(--text-muted); }
-  .note ol { margin: 8px 0 0 18px; }
-  .note li { margin-bottom: 4px; }
-  .note strong { color: var(--text); }
+  .note summary {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 600; letter-spacing: -0.012em;
+    cursor: pointer; list-style: none; position: relative;
+    border-radius: var(--r-control); padding: 6px 8px; margin: -6px -8px;
+  }
+  .note summary::-webkit-details-marker { display: none; }
+  /* The caret is a real element, not a ::after pseudo: a pseudo cannot take
+     aria-hidden, so a generated "+" lands inside the control's accessible name
+     and VoiceOver reads it as part of the label. The state itself is already
+     exposed by <details>, so the glyph is purely visual. */
+  .note summary > .caret {
+    margin-inline-start: auto; padding-inline-start: 8px;
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 14px; line-height: 1; color: var(--text-faint);
+  }
+  /* Both states are driven from ::before, never from a literal glyph in the
+     span's text. The span used to contain a real "+" character while the open
+     state prepended "−" via ::before, and a ::before inserts BEFORE an
+     element's own text, so opening the details rendered "−+" instead of "−".
+     `content: none` on a pseudo cannot suppress a real text node, which is
+     why the older ::after rule never fixed it. One source, one glyph. */
+  .note summary > .caret::before { content: "+"; }
+  .note[open] summary > .caret::before { content: "\2212"; }
+  /* separation from the body, applied only when open so the collapsed row
+     does not carry 16px of dead space */
+  .note[open] summary { margin-bottom: 16px; }
+  /* 44px touch target without a 44px-tall row: the pseudo is centred on the
+     summary and is part of the control, not a layer over it. */
+  .note summary::before {
+    content: ""; position: absolute; inset-block: 0;
+    inset-inline: -8px; min-height: 44px;
+  }
+  @media (hover: hover) { .note summary:hover { color: var(--text-muted); } }
+  .note svg { width: 17px; height: 17px; color: var(--amber); flex-shrink: 0; }
+  /* the animated element: JS pins height + overflow during the transition and
+     clears both on finish. Without JS this is a plain block and the details
+     still opens — it just snaps. Carries the read-measure cap set on .note
+     above; both properties must live in this one rule, since a second
+     .note-body elsewhere would silently drop one of them. */
+  .note-body { overflow: hidden; max-width: 700px; }
+  .note p, .note li { font-size: 14px; line-height: 1.65; color: var(--text-muted); }
+  .note ol { margin: 8px 0 0 24px; }
+  .note li { margin-bottom: 8px; }
+  .note strong { color: var(--text); font-weight: 600; }
+  .note code {
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
+  }
+
+  /* CLOSER — the terminal beat.
+     The page had no ending: hero, features, steps, gatekeeper note, footer.
+     The last thing a visitor read before the footer was a warning about an
+     unsigned build, which is the wrong note to end on. This section sits after
+     the note and gives the page somewhere to actually stop.
+
+     It sits on the page ground, NOT on a plane of its own. It started as a
+     saturated --primary fill, which argued itself well on paper but read as
+     "loud" on the page: the closing beat was the single most saturated thing
+     on a deliberately quiet layout. So it takes --bg like everything else and
+     earns its ending from position instead of colour.
+
+     It still reads as a separate block, because the section above it is .band
+     (--card). The step is --card to --bg, not bg to bg. In light mode that is
+     only 1.04:1 (see the .band comment), so here the full-bleed edges and the
+     80px of padding are doing the separating, which is the same deal the band
+     itself makes in reverse.
+
+     `padding-block: 0` is needed because `section` already sets
+     padding-block: var(--space-section); this wrapper owns none of its own
+     spacing and must not add a second 80px on top of the panel's. */
+  .closer { padding-block: 0; padding-inline: 0; }
+  .closer-panel { padding-block: var(--space-section); text-align: center; }
+  .closer-panel h2 {
+    color: var(--text);
+    /* 24px between the title and the description, per the section's spacing.
+       This is a deliberate step down from the page's --space-tight (32px)
+       that h2 carries everywhere else: here the description is two lines of
+       body copy directly under a much larger title, and at 32px the pair
+       separates far enough to stop reading as one block. Everywhere else on
+       the page the h2 is followed by a card grid or a step rail, which needs
+       the wider gap.
+
+       Nothing else is set here on purpose. This used to carry `max-width:
+       22ch` and `line-height: 1.12`, which made it the only title on the page
+       wrapped to two lines, forced by a <br>, in a 585px column while the
+       other two ran the full 1008px. Same words, visibly different component.
+       Letting it inherit is what makes the three read as one set. */
+    margin-bottom: 24px;
+  }
+  .closer-sub {
+    max-width: 52ch; margin: 0 auto;
+    font-size: 16px; line-height: 1.6; color: var(--text-muted);
+    text-wrap: pretty;
+  }
+  /* The download row mirrors the hero's, so it uses .cta directly rather than
+     restating the flex rules: one row, intrinsic widths, same gap. .cta is
+     only about the desktop row, and the mobile stack below overrides it, so
+     the two stay in agreement automatically.
+
+     The buttons carry NO overrides. They were inverted for the blue plane —
+     white fill, ghost outline — and all of that is gone. On --bg the hero's own
+     .btn-primary and .btn-secondary are already correct, so restating them
+     here would only create a second place to keep in sync. */
+  .closer .cta { margin-top: 32px; }
+  /* The reassurance strip. Separated from the buttons by whitespace only — a
+     hairline here would read as a divider between two halves of one control
+     cluster, and this is a single closing statement. */
+  .closer-meta {
+    margin-top: 24px; font-size: 12.5px; line-height: 1.8;
+    color: var(--text-faint);
+  }
+  .closer-meta .sep { color: var(--border-strong); margin: 0 8px; }
+  /* No link lives in this strip any more — "Dukung pengembangan" was here once
+     and is in the footer already, so the panel had no reason to repeat it. The
+     pseudo-element that grew that link's hit area went with it; this strip is
+     now static text and needs no rules beyond its own type. */
 
   footer {
     border-top: 1px solid var(--border);
-    padding: 30px 0 40px; text-align: center;
-    font-size: 12.5px; color: var(--text-faint);
+    padding: 40px 0 48px; text-align: center;
+    font-size: 13px; color: var(--text-faint); line-height: 2;
   }
-  footer a { color: var(--text-muted); font-weight: 600; }
+  footer a { color: var(--text-muted); font-weight: 500; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+  @media (hover: hover) {
+    footer a:hover { color: var(--text); }
+  }
+  footer .foot-sep { margin: 0 8px; color: var(--border-strong); }
+
+  /* NARROW VIEWPORTS
+     .grid collapses via auto-fit + minmax(220px, 1fr). The two fixed-column
+     grids below have no such affordance, so they get an explicit collapse: at
+     320px the three stat cards would otherwise be ~88px each and the 150px
+     sidebar would leave 130px for the main pane. */
+  @media (max-width: 640px) {
+    .window-body { grid-template-columns: 1fr; }
+    .mock-side {
+      border-right: 0; border-bottom: 1px solid var(--border);
+      display: flex; gap: 6px; overflow-x: auto; padding: 10px;
+    }
+    .side-item { white-space: nowrap; }
+    .mock-cards { grid-template-columns: 1fr; }
+
+    /* CTA — equal widths when stacked.
+       .btn is inline-flex with no width, so it sized to its label: "Unduh untuk
+       Apple Silicon" came out 237px against Intel's 178px, a 59px difference
+       the eye reads as a mistake once the buttons are on separate rows. Below
+       640px the pair always wraps, so stretch both to the row width instead.
+       Desktop keeps intrinsic widths, which is correct there: the labels
+       genuinely differ in length.
+
+       width:100% on .cta is load-bearing, not redundant. .cta is a flex child
+       of .hero-copy, which sets align-items:center, so the row shrink-wraps to
+       its widest button (237px). align-items:stretch on .cta would then only
+       equalise the buttons at 237px rather than filling the column. Taking the
+       full column first is what makes width:100% on .btn land on the gutter. */
+    .cta { flex-direction: column; align-items: stretch; width: 100%; }
+    .btn { width: 100%; }
+
+    /* Steps stack, and the connector goes with them: a horizontal hairline
+       between vertically stacked steps would point at nothing. The .steps grid
+       is explicitly 3 columns above this breakpoint. */
+    .steps { grid-template-columns: 1fr; gap: 32px; }
+    .step::after { content: none; }
+
+    /* Stacked, each step becomes two columns: the numeral in a content-sized
+       track, the text taking the rest. Stacking the numeral above the title
+       spent a 28px row per step and made a three-item list feel like a long
+       scroll; side by side the three steps read as a compact list and the
+       numeral still labels its own step. The numeral drops to 20px here
+       because a 28px digit is visually heavier than the 15.5px title it sits
+       beside, and align-items:start keeps it on the title's cap line rather
+       than floating centred against a tall paragraph. */
+    .step {
+      display: grid; grid-template-columns: auto 1fr;
+      column-gap: 16px; align-items: start;
+    }
+    .step-num { font-size: 20px; margin-bottom: 0; }
+    .step-body { min-width: 0; }
+
+    /* Match the summary's icon-to-label gap to the step numeral-to-body gap
+       (16px). Both are "a marker, then its text", and at 8px vs 16px the
+       accordion row sat visibly tighter than the steps directly above it, so
+       the two left edges read as unrelated. Scoped to the narrow breakpoint:
+       the steps only become two columns here, so that is the only width where
+       the two gaps are meant to agree. */
+    .note summary { gap: 16px; }
+    /* `padding: 8px 0` here silently zeroed the inline padding .wrap sets: the
+       shorthand resets all four sides, so the nav ran flush to both viewport
+       edges below 640px while every other element kept its gutter. Logical
+       properties keep the block padding without touching the inline. */
+    .nav-inner { height: auto; min-height: 56px; padding-block: 8px; flex-wrap: wrap; gap: 8px; }
+  }
 </style>
 </head>
 <body>
+
+<a class="skip" href="#main">Lompat ke konten utama</a>
 
 <nav>
   <div class="wrap nav-inner">
     <div class="brand"><span class="brand-mark">✦</span> Muli</div>
     <div class="nav-links">
-      <a class="nav-donate" href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">☕ Donasi</a>
-      <a class="nav-gh" href="https://github.com/athasamid/muli" target="_blank" rel="noopener">GitHub ↗</a>
+      <a class="nav-donate" href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M80,56V24a8,8,0,0,1,16,0V56a8,8,0,0,1-16,0Zm40,8a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,120,64Zm32,0a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,152,64Zm96,56v8a40,40,0,0,1-37.51,39.91,96.59,96.59,0,0,1-27,40.09H208a8,8,0,0,1,0,16H32a8,8,0,0,1,0-16H56.54A96.3,96.3,0,0,1,24,136V88a8,8,0,0,1,8-8H208A40,40,0,0,1,248,120ZM200,96H40v40a80.27,80.27,0,0,0,45.12,72h69.76A80.27,80.27,0,0,0,200,136Zm32,24a24,24,0,0,0-16-22.62V136a95.78,95.78,0,0,1-1.2,15A24,24,0,0,0,232,128Z"/></svg> Donasi</a>
+      <a class="nav-gh" href="https://github.com/athasamid/muli" target="_blank" rel="noopener"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a16,16,0,0,1,16-16H72a8,8,0,0,1,0,16H32v64H224V136H184a8,8,0,0,1,0-16h40A16,16,0,0,1,240,136Zm-117.66-2.34a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,108.69V24a8,8,0,0,0-16,0v84.69L85.66,74.34A8,8,0,0,0,74.34,85.66ZM200,168a12,12,0,1,0-12,12A12,12,0,0,0,200,168Z"/></svg> GitHub</a>
     </div>
   </div>
 </nav>
 
+<main id="main">
 <header class="wrap">
+  <div class="hero-copy">
   <div class="badge"><span class="dot"></span> 100% Lokal · Tanpa Telemetri · Open-Source</div>
   <h1>Bersihkan Mac Anda<br><em>tanpa membuka Terminal</em></h1>
   <p class="sub">
-    Muli adalah aplikasi desktop untuk <strong>Mole</strong> — pembersih macOS
-    open-source. Hapus cache, log, dan file sampah dengan satu klik.
-    Tanpa perintah, tanpa terminal.
+    Muli adalah aplikasi desktop untuk <strong>Mole</strong>, pembersih macOS
+    open-source. Satu klik untuk membersihkan cache, log, dan file sampah
+    yang menumpuk.
   </p>
 
   <div class="cta">
@@ -279,12 +684,14 @@
       <small>Mac 2020 ke bawah</small>
     </a>
   </div>
-  <p class="cta-note">Gratis · Versi terbaru langsung dari GitHub Releases · <span id="arch-hint"></span></p>
+  <p class="cta-note">Gratis · Versi terbaru langsung dari GitHub Releases · <span id="arch-hint" role="status"></span></p>
 
-  <div class="stats" id="stats" hidden>
-    <span>⬇ <b id="stat-downloads">–</b> unduhan</span>
-    <span>★ <b id="stat-stars">–</b> stars di GitHub</span>
-    <span>🏷 <b id="stat-version">–</b> versi terbaru</span>
+  <div class="stats" id="stats" role="status" hidden>
+    <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a16,16,0,0,1,16-16H72a8,8,0,0,1,0,16H32v64H224V136H184a8,8,0,0,1,0-16h40A16,16,0,0,1,240,136Zm-117.66-2.34a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,108.69V24a8,8,0,0,0-16,0v84.69L85.66,74.34A8,8,0,0,0,74.34,85.66ZM200,168a12,12,0,1,0-12,12A12,12,0,0,0,200,168Z"/></svg> <b id="stat-downloads">-</b> unduhan</span>
+    <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a36.36,36.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61a.37.37,0,0,1,.67,0L152,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></svg> <b id="stat-stars">-</b> stars di GitHub</span>
+    <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M243.31,136,144,36.69A15.86,15.86,0,0,0,132.69,32H40a8,8,0,0,0-8,8v92.69A15.86,15.86,0,0,0,36.69,144L136,243.31a16,16,0,0,0,22.63,0l84.68-84.68a16,16,0,0,0,0-22.63Zm-96,96L48,132.69V48h84.69L232,147.31ZM96,84A12,12,0,1,1,84,72,12,12,0,0,1,96,84Z"/></svg> <b id="stat-version">-</b> versi terbaru</span>
+  </div>
+
   </div>
 
   <div class="mock">
@@ -293,7 +700,7 @@
         <span class="light" style="background:#FF5F56"></span>
         <span class="light" style="background:#FFBD2E"></span>
         <span class="light" style="background:#27C93F"></span>
-        <span class="name">Muli — Overview</span>
+        <span class="name">Muli, Overview</span>
       </div>
       <div class="window-body">
         <div class="mock-side">
@@ -336,74 +743,113 @@
 </header>
 
 <section class="wrap">
-  <p class="sec-label">Kenapa Muli</p>
   <h2>Kuat seperti terminal, mudah seperti aplikasi</h2>
   <div class="grid">
     <div class="feature">
-      <div class="ico ico-blue">🧹</div>
+      <div class="ico ico-blue"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M235.5,216.81c-22.56-11-35.5-34.58-35.5-64.8V134.73a15.94,15.94,0,0,0-10.09-14.87L165,110a8,8,0,0,1-4.48-10.34l21.32-53a28,28,0,0,0-16.1-37,28.14,28.14,0,0,0-35.82,16,.61.61,0,0,0,0,.12L108.9,79a8,8,0,0,1-10.37,4.49L73.11,73.14A15.89,15.89,0,0,0,55.74,76.8C34.68,98.45,24,123.75,24,152a111.45,111.45,0,0,0,31.18,77.53A8,8,0,0,0,61,232H232a8,8,0,0,0,3.5-15.19ZM67.14,88l25.41,10.3a24,24,0,0,0,31.23-13.45l21-53c2.56-6.11,9.47-9.27,15.43-7a12,12,0,0,1,6.88,15.92L145.69,93.76a24,24,0,0,0,13.43,31.14L184,134.73V152c0,.33,0,.66,0,1L55.77,101.71A108.84,108.84,0,0,1,67.14,88Zm48,128a87.53,87.53,0,0,1-24.34-42,8,8,0,0,0-15.49,4,105.16,105.16,0,0,0,18.36,38H64.44A95.54,95.54,0,0,1,40,152a85.9,85.9,0,0,1,7.73-36.29l137.8,55.12c3,18,10.56,33.48,21.89,45.16Z"/></svg></div>
       <h3>Bersih satu klik</h3>
-      <p>Cache aplikasi, log, file sementara, dan sampah developer dibersihkan otomatis — dokumen pribadi tidak pernah disentuh.</p>
+      <p>Dokumen pribadi tidak pernah disentuh. Cache, log, file sementara, dan sampah developer dibersihkan otomatis.</p>
     </div>
     <div class="feature">
-      <div class="ico ico-green">👀</div>
-      <h3>Pratinjau dulu</h3>
-      <p>Mode Preview menunjukkan apa saja yang akan dihapus dan berapa ruang yang didapat — tanpa menghapus apa pun.</p>
-    </div>
-    <div class="feature">
-      <div class="ico ico-amber">🔒</div>
+      <div class="ico ico-amber"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z"/></svg></div>
       <h3>Aman &amp; privat</h3>
-      <p>Password Anda diteruskan langsung ke macOS dan tidak pernah disimpan. Semua berjalan lokal, tanpa telemetri.</p>
+      <p>Password diteruskan langsung ke macOS, tidak pernah disimpan. Semua berjalan lokal, tanpa telemetri.</p>
     </div>
     <div class="feature">
-      <div class="ico ico-blue">⚙️</div>
-      <h3>Mesin Mole</h3>
-      <p>Ditenagai <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">Mole</a>, pembersih macOS open-source yang teruji — Muli memasangnya otomatis untuk Anda.</p>
+      <div class="ico ico-green"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg></div>
+      <h3>Pratinjau dulu</h3>
+      <p>Lihat apa saja yang akan dihapus dan berapa ruang yang didapat, tanpa menghapus apa pun.</p>
+    </div>
+    <div class="feature">
+      <div class="ico ico-blue"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.21,107.21,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.71,107.71,0,0,0-26.25-10.87,8,8,0,0,0-7.06,1.49L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.21,107.21,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.2,107.2,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0,1.49-7.06l2.64-23.72q1.48-1.56,3-3ZM192,180.16a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z"/></svg></div>
+      <h3>Siap otomatis</h3>
+      <p>Ditenagai <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">Mole</a>, pembersih macOS open-source. Muli memasangnya otomatis.</p>
     </div>
   </div>
 </section>
 
-<section class="wrap">
-  <p class="sec-label">Cara pakai</p>
+<section class="band">
+  <div class="wrap">
   <h2>Tiga langkah, selesai</h2>
   <div class="steps">
     <div class="step">
-      <h3>Unduh &amp; buka</h3>
-      <p>Unduh file <code>.dmg</code> sesuai chip Mac Anda, lalu seret Muli ke folder Applications.</p>
+      <span class="step-num" aria-hidden="true"></span>
+      <div class="step-body">
+        <h3>Unduh &amp; buka</h3>
+        <p>Unduh file <code>.dmg</code> sesuai chip Mac Anda, lalu seret Muli ke folder Applications.</p>
+      </div>
     </div>
     <div class="step">
-      <h3>Pasang Mole otomatis</h3>
-      <p>Saat pertama dibuka, Muli memeriksa dan memasang mesin pembersih Mole untuk Anda — cukup klik Install.</p>
+      <span class="step-num" aria-hidden="true"></span>
+      <div class="step-body">
+        <h3>Pasang Mole otomatis</h3>
+        <p>Saat pertama dibuka, Muli memasang Mole untuk Anda. Cukup klik Install.</p>
+      </div>
     </div>
     <div class="step">
-      <h3>Klik Clean</h3>
-      <p>Lihat pratinjau, lalu klik Clean. Ruang penyimpanan kembali lega dalam hitungan detik.</p>
+      <span class="step-num" aria-hidden="true"></span>
+      <div class="step-body">
+        <h3>Klik Clean</h3>
+        <p>Lihat pratinjau, lalu klik Clean. Ruang penyimpanan kembali lega dalam hitungan detik.</p>
+      </div>
+    </div>
+  </div>
+
+    <details class="note">
+      <summary><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg> Muncul peringatan saat pertama membuka?<span class="caret" aria-hidden="true"></span></summary>
+      <div class="note-body">
+  <p>
+    Muli belum ditandatangani dengan sertifikat Apple Developer, jadi macOS
+    akan menampilkan peringatan sekali di awal. Cara membukanya:
+  </p>
+  <ol>
+    <li>Seret Muli ke folder <strong>Applications</strong>, lalu buka. Jika macOS memblokirnya:</li>
+    <li><strong>macOS 15 (Sequoia):</strong> buka <strong>System Settings → Privacy &amp; Security</strong>, gulir ke bawah, lalu klik <strong>Open Anyway</strong>.</li>
+    <li><strong>macOS 14 ke bawah:</strong> <strong>klik kanan</strong> ikon Muli → <strong>Open</strong> → klik <strong>Open</strong> lagi.</li>
+  </ol>
+  <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="closer">
+  <div class="closer-panel">
+    <div class="wrap">
+      <h2>Mac Anda bersih, dalam sekali klik</h2>
+      <p class="closer-sub">
+        Dua klik dari selesai: seret ke Applications, lalu klik Clean.
+        Tidak perlu akun, tidak perlu Terminal, tidak perlu langganan.
+      </p>
+
+      <div class="cta">
+        <a id="dlc-arm" class="btn btn-primary" href="https://github.com/athasamid/muli/releases/latest/download/Muli-arm64.dmg">
+          Unduh untuk Apple Silicon
+          <small>M1 · M2 · M3 · M4</small>
+        </a>
+        <a id="dlc-intel" class="btn btn-secondary" href="https://github.com/athasamid/muli/releases/latest/download/Muli-x64.dmg">
+          Unduh untuk Intel
+          <small>Mac 2020 ke bawah</small>
+        </a>
+      </div>
+
+      <p class="closer-meta">
+        Gratis selamanya<span class="sep">&middot;</span>100% lokal, tanpa telemetri<span class="sep">&middot;</span>
+        <span class="mono">Muli <span id="closer-version">-</span></span>
+      </p>
     </div>
   </div>
 </section>
 
-<section class="wrap">
-  <div class="note">
-    <h3>⚠️ Muncul peringatan saat pertama membuka?</h3>
-    <p>
-      Muli belum ditandatangani dengan sertifikat Apple Developer (aplikasi ini gratis
-      dan open-source), jadi macOS akan menampilkan peringatan sekali di awal. Cara membukanya:
-    </p>
-    <ol>
-      <li>Seret Muli ke folder <strong>Applications</strong>, lalu buka. Jika macOS memblokirnya:</li>
-      <li><strong>macOS 15 (Sequoia):</strong> buka <strong>System Settings → Privacy &amp; Security</strong>, gulir ke bawah, klik <strong>Open Anyway</strong>.</li>
-      <li><strong>macOS 14 ke bawah:</strong> <strong>klik kanan</strong> ikon Muli → <strong>Open</strong> → klik <strong>Open</strong> lagi.</li>
-    </ol>
-    <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
-  </div>
-</section>
+</main>
 
 <footer>
   <div class="wrap">
-    Muli — open-source, dibangun di atas
-    <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">tw93/mole</a> ·
-    <a href="https://github.com/athasamid/muli" target="_blank" rel="noopener">Kode sumber</a> ·
-    <a href="https://github.com/athasamid/muli/releases" target="_blank" rel="noopener">Semua rilis</a> ·
-    <a href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">☕ Dukung pengembangan</a>
+    Muli, open-source, dibangun di atas
+    <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">tw93/mole</a><span class="foot-sep">&middot;</span>
+    <a href="https://github.com/athasamid/muli" target="_blank" rel="noopener">Kode sumber</a><span class="foot-sep">&middot;</span>
+    <a href="https://github.com/athasamid/muli/releases" target="_blank" rel="noopener">Semua rilis</a><span class="foot-sep">&middot;</span>
+    <a href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">Dukung pengembangan</a>
   </div>
 </footer>
 
@@ -429,9 +875,103 @@
       document.getElementById('stat-downloads').textContent = fmt(downloads);
       document.getElementById('stat-stars').textContent = fmt(repo.stargazers_count || 0);
       var latest = releases.filter(function (r) { return !r.draft && !r.prerelease; })[0];
-      document.getElementById('stat-version').textContent = latest ? latest.tag_name : '–';
+      var version = latest ? latest.tag_name : '-';
+      document.getElementById('stat-version').textContent = version;
+      // The closing panel repeats the version. It is a separate node, so the
+      // write above does not reach it; without this line the panel would ship
+      // the "-" placeholder permanently on any fetch that succeeds.
+      var closerVersion = document.getElementById('closer-version');
+      if (closerVersion) closerVersion.textContent = version;
       document.getElementById('stats').hidden = false;
-    }).catch(function () { /* stats are optional — keep them hidden */ });
+    }).catch(function () { /* stats are optional, keep them hidden */ });
+  })();
+
+  // GATEKEEPER NOTE — smooth open/close.
+  // Native <details> handles the semantics; this only animates the height,
+  // which CSS cannot transition on a display-toggled element. Everything here
+  // is enhancement: with JS off, or motion reduced, the details still opens,
+  // it just snaps. Duration and curve match .btn on this page.
+  (function () {
+    var d = document.querySelector('.note');
+    if (!d) return;
+    var body = d.querySelector('.note-body');
+    var DUR = 220;
+    var EASE = 'cubic-bezier(.2,0,0,1)';
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var anim = null;
+
+    // Intent is tracked here, never inferred from d.open. While an animation
+    // is in flight the attribute still holds the PREVIOUS state, so a click
+    // that means "reopen" would otherwise read d.open and compute "close".
+    var want = d.open;
+    // The height to animate from and to. Measured, not read off scrollHeight:
+    // the body is pinned by an inline height for the duration of the
+    // animation, so scrollHeight reports the pinned value, not the live one.
+    var full = 0;
+
+    function settle() {
+      body.style.height = '';
+      body.style.overflow = '';
+      anim = null;
+    }
+
+    function stop() {
+      if (anim) { anim.cancel(); anim = null; }
+      settle();
+    }
+
+    function render() {
+      stop();
+      if (reduced.matches || !body.animate) {
+        // Snap, but never leave the body pinned: a details that reports open
+        // while rendering at zero height hides its own content from AT.
+        d.open = want;
+        settle();
+        return;
+      }
+      if (want) {
+        d.open = true;
+        body.style.overflow = 'hidden';
+        body.style.height = '0px';
+        anim = body.animate(
+          [{ height: '0px', opacity: 0.4 }, { height: full + 'px', opacity: 1 }],
+          { duration: DUR, easing: EASE }
+        );
+      } else {
+        d.open = true; // stay open so the body keeps a box to animate
+        body.style.overflow = 'hidden';
+        body.style.height = full + 'px';
+        anim = body.animate(
+          [{ height: full + 'px', opacity: 1 }, { height: '0px', opacity: 0.4 }],
+          { duration: DUR, easing: EASE }
+        );
+      }
+      anim.onfinish = function () {
+        // Closing is the only direction that touches the attribute on the way
+        // out; preventDefault above suppressed the browser's own toggle.
+        if (!want) d.open = false;
+        settle();
+      };
+    }
+
+    d.addEventListener('click', function (e) {
+      if (e.target.closest('summary') === null) return;
+      e.preventDefault();
+      // Measure the live height before anything is pinned, so an interrupted
+      // animation restarts from where the panel actually is on screen.
+      full = body.getBoundingClientRect().height;
+      want = !want;
+      render();
+    });
+
+    // Keyboard activation on <summary> fires a click, so it is covered above.
+    // Toggling the OS motion preference mid-animation must not strand the
+    // panel in a pinned intermediate state.
+    reduced.addEventListener('change', function () {
+      if (anim) { anim.cancel(); anim = null; }
+      if (!want) d.open = false;
+      settle();
+    });
   })();
 
   // Best-effort chip detection to highlight the right download.
@@ -447,7 +987,7 @@
         if (/Apple (M\d|GPU)/i.test(renderer)) isAppleSilicon = true;
       }
       if (navigator.platform === 'MacIntel' && !isAppleSilicon) {
-        // Could still be Apple Silicon Safari reporting MacIntel — only swap
+        // Could still be Apple Silicon Safari reporting MacIntel. Only swap
         // emphasis when we positively detected an Intel GPU string.
         hint.textContent = 'Tidak yakin chip Mac Anda? Klik  → About This Mac.';
       } else if (isAppleSilicon) {

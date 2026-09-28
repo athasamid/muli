@@ -10,6 +10,7 @@
     "build:ui": "cd ui && npm run build",
     "dist:mac": "npm run build:ui && electron-builder --mac",
     "release": "./scripts/release.sh",
+    "check:landing": "node scripts/check-landing.js",
     "deploy:landing": "./scripts/release.sh --landing-only",
     "postinstall": "electron-rebuild -f -w node-pty"
   },
