@@ -146,12 +146,18 @@
     --space-section: 80px;
     --space-block: 48px;
     --space-tight: 32px;
+    /* Page gutter. Named because .wrap and the mobile .nav-inner override both
+       need to agree on it, and a literal in each place is how they drifted
+       apart in the first place. */
+    --space-gutter: 16px;
   }
-  /* Horizontal only. This used to be `padding: 0 20px`, which zeroed the
-     vertical padding on every element that also carries .wrap — including
-     header and section, whose own `padding` rules are less specific than a
-     class and were therefore silently dropped. */
-  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 24px; }
+  /* Horizontal only, and logical so a later `padding` shorthand cannot reset
+     it. This used to be `padding: 0 20px`, which zeroed the vertical padding
+     on every element that also carries .wrap — including header and section,
+     whose own `padding` rules are less specific than a class and were
+     therefore silently dropped. The mobile nav hit the same trap later, in
+     reverse: `padding: 8px 0` zeroed the padding declared here. */
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: var(--space-gutter); }
   :focus-visible {
     outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
@@ -452,7 +458,11 @@
     }
     .side-item { white-space: nowrap; }
     .mock-cards { grid-template-columns: 1fr; }
-    .nav-inner { height: auto; min-height: 56px; padding: 8px 0; flex-wrap: wrap; gap: 8px; }
+    /* `padding: 8px 0` here silently zeroed the inline padding .wrap sets: the
+       shorthand resets all four sides, so the nav ran flush to both viewport
+       edges below 640px while every other element kept its gutter. Logical
+       properties keep the block padding without touching the inline. */
+    .nav-inner { height: auto; min-height: 56px; padding-block: 8px; flex-wrap: wrap; gap: 8px; }
   }
 </style>
 </head>
