@@ -36,30 +36,41 @@
   :root {
     --bg: #faf8fe;
     --card: #fdfdfd;
+    /* recessed surface for code chips and other inset fills. --border is a
+       hairline, not a fill: at 8% black it is invisible on the dark card. */
+    --surface-sunken: #ebebeb;
     --text: #1a1b1f;
     --text-muted: #414755;
     --text-faint: #666c7a;
     --border: rgba(0, 0, 0, 0.08);
     --border-strong: rgba(0, 0, 0, 0.14);
-    /* primary darkened to clear WCAG AA (4.5:1) as TEXT on --bg */
+    /* --primary is a FILL (white text sits on it); --accent-ink is the same hue
+       used as TEXT and as the focus ring. They need different lightness per
+       theme, so they are separate tokens rather than one reused value. */
     --primary: #0062c8;
     --primary-deep: #004a9e;
+    --accent-ink: #0062c8;
     --primary-soft: #d8e2ff;
     --green: #006e28;
     --green-soft: rgba(111, 251, 133, 0.35);
     --amber-soft: #ffdcbf;
     --amber: #894d00;
-    --terminal: #16171b;
     --shadow: 0 20px 50px -20px rgba(0, 40, 100, 0.25);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #1a1b1f;
       --card: #2f3034;
+      --surface-sunken: #1f2024;
       --text: #f1f0f5;
       --text-muted: #c1c6d7;
       --text-faint: #8a90a0;
       --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.24);
+      /* lifted for a dark ground: 3.74:1 as a fill boundary, 4.61:1 under white */
+      --primary: #0d74dd;
+      --primary-deep: #0a5fb4;
+      --accent-ink: #7cb2ff;
       --primary-soft: #004493;
       --green: #6ffb85;
       --green-soft: rgba(0, 83, 28, 0.6);
@@ -71,10 +82,15 @@
   :root[data-theme="dark"] {
     --bg: #1a1b1f;
     --card: #2f3034;
+    --surface-sunken: #1f2024;
     --text: #f1f0f5;
     --text-muted: #c1c6d7;
     --text-faint: #8a90a0;
     --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.24);
+    --primary: #0d74dd;
+    --primary-deep: #0a5fb4;
+    --accent-ink: #7cb2ff;
     --primary-soft: #004493;
     --green: #6ffb85;
     --green-soft: rgba(0, 83, 28, 0.6);
@@ -85,6 +101,20 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  /* RADIUS SCALE. One value per role, so the page stops reading as assembled.
+     Concentric rule: nested radius = outer radius - padding.
+       999px pills   full-round controls (nav, badge, progress bars)
+        14px surfaces cards and panels (.feature, .step, .note, .window)
+        10px inset    elements sitting inside a surface (.ico, .mock-card)
+         8px controls small filled controls (.btn, .brand-mark, .skip, .mock-btn)
+         5px inline   code chips only */
+  :root {
+    --r-pill: 999px;
+    --r-surface: 14px;
+    --r-inset: 10px;
+    --r-control: 8px;
+    --r-inline: 5px;
+  }
   body {
     background: var(--bg);
     color: var(--text);
@@ -101,9 +131,23 @@
   a { color: inherit; }
   .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
   :focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
-    border-radius: 8px;
+    border-radius: var(--r-control);
+  }
+  /* First focusable element on the page: moves past the nav straight to the
+     content, and is invisible until focused. */
+  .skip {
+    position: absolute; left: 8px; top: 8px; z-index: 20;
+    transform: translateY(-200%);
+    background: var(--card); color: var(--text);
+    padding: 10px 16px; border-radius: var(--r-control);
+    border: 1px solid var(--border-strong);
+    font-size: 14px; font-weight: 500; text-decoration: none;
+  }
+  .skip:focus { transform: translateY(0); }
+  @media (prefers-reduced-motion: no-preference) {
+    .skip { transition: transform .15s cubic-bezier(.2,0,0,1); }
   }
 
   /* NAV */
@@ -116,7 +160,7 @@
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
   .brand-mark {
-    width: 28px; height: 28px; border-radius: 8px;
+    width: 28px; height: 28px; border-radius: var(--r-control);
     background: linear-gradient(135deg, var(--primary), var(--primary-deep));
     display: grid; place-items: center; color: #fff; font-size: 15px;
   }
@@ -125,15 +169,23 @@
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 13px; font-weight: 500; text-decoration: none;
     color: var(--text-muted); padding: 7px 14px; border: 1px solid var(--border);
-    border-radius: 999px;
-    transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+    border-radius: var(--r-pill);
   }
   .nav-donate {
     color: var(--amber); border-color: transparent; background: var(--amber-soft);
   }
-  .nav-gh:hover, .nav-donate:hover { color: var(--text); border-color: var(--border-strong); }
+  /* Hover styling is gated: on touch a tapped link would otherwise keep the
+     hover treatment after the finger lifts. */
+  @media (hover: hover) {
+    .nav-gh:hover, .nav-donate:hover { color: var(--text); border-color: var(--border-strong); }
+  }
   .nav-gh:active, .nav-donate:active { transform: translateY(1px); }
   .nav-gh svg, .nav-donate svg { width: 15px; height: 15px; flex-shrink: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-gh, .nav-donate {
+      transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+    }
+  }
 
   /* LIVE STATS */
   .stats {
@@ -150,7 +202,7 @@
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12.5px; font-weight: 500; color: var(--text-muted);
     border: 1px solid var(--border); background: var(--card);
-    padding: 6px 14px; border-radius: 999px; margin-bottom: 24px;
+    padding: 6px 14px; border-radius: var(--r-pill); margin-bottom: 24px;
   }
   .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #27C93F; }
   h1 {
@@ -159,7 +211,7 @@
     font-weight: 700; letter-spacing: -0.032em; line-height: 1.08;
     text-wrap: balance;
   }
-  h1 em { font-style: normal; color: var(--primary); }
+  h1 em { font-style: normal; color: var(--accent-ink); }
   .sub {
     max-width: 54ch; margin: 20px auto 0;
     font-size: 17px; line-height: 1.65; color: var(--text-muted);
@@ -168,12 +220,17 @@
   .cta { margin-top: 32px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   .btn {
     display: inline-flex; flex-direction: column; align-items: center;
-    text-decoration: none; border-radius: 12px; padding: 13px 28px;
+    text-decoration: none; border-radius: var(--r-control); padding: 13px 28px;
     font-weight: 600; font-size: 15px; line-height: 1.35;
-    transition: transform .14s cubic-bezier(.16,1,.3,1), box-shadow .14s ease, border-color .14s ease;
   }
-  .btn:hover { transform: translateY(-2px); }
-  .btn:active { transform: translateY(0); }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn {
+      transition: transform .14s cubic-bezier(.16,1,.3,1), box-shadow .14s ease, border-color .14s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    /* press feedback: the skill's exact 0.96, not a full cancel of the hover */
+    .btn:active { transform: scale(0.96); }
+  }
   .btn small { font-size: 12px; font-weight: 400; color: inherit; opacity: .78; }
   .btn-primary {
     background: linear-gradient(180deg, var(--primary), var(--primary-deep));
@@ -184,14 +241,16 @@
     background: var(--card); color: var(--text);
     border: 1px solid var(--border-strong);
   }
-  .btn-secondary:hover { border-color: var(--text-faint); }
+  @media (hover: hover) {
+    .btn-secondary:hover { border-color: var(--text-faint); }
+  }
   .cta-note { margin-top: 16px; font-size: 12.5px; color: var(--text-faint); }
 
   /* MOCKUP */
   .mock { margin: 48px auto 0; max-width: 780px; }
   .window {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+    border-radius: var(--r-surface); box-shadow: var(--shadow); overflow: hidden;
     text-align: left;
   }
   .titlebar {
@@ -204,7 +263,7 @@
   .mock-side { border-right: 1px solid var(--border); padding: 14px 10px; font-size: 11.5px; }
   .side-item {
     display: flex; align-items: center; gap: 7px;
-    padding: 6px 9px; border-radius: 7px; color: var(--text-muted);
+    padding: 6px 9px; border-radius: var(--r-control); color: var(--text-muted);
   }
   .side-item.active { background: var(--primary-soft); color: var(--primary-deep); font-weight: 600; }
   :root[data-theme="dark"] .side-item.active { color: #adc6ff; }
@@ -216,21 +275,21 @@
   .mock-sub { font-size: 11px; color: var(--text-faint); margin-bottom: 12px; }
   .mock-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
   .mock-card {
-    border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+    border: 1px solid var(--border); border-radius: var(--r-inset); padding: 10px;
   }
   .mock-card .k { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
   .mock-card .v { font-size: 15px; font-weight: 800; margin: 3px 0 6px; }
-  .bar { height: 3px; border-radius: 999px; background: var(--border); overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 999px; }
+  .bar { height: 3px; border-radius: var(--r-pill); background: var(--border); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: var(--r-pill); }
   .mock-banner {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
+    border: 1px solid var(--border); border-radius: var(--r-inset); padding: 11px 13px;
   }
   .mock-banner .t { font-size: 12px; font-weight: 700; }
   .mock-banner .d { font-size: 10.5px; color: var(--text-faint); }
   .mock-btn {
     flex-shrink: 0; font-size: 11px; font-weight: 700; color: #fff;
-    background: var(--primary); border-radius: 8px; padding: 7px 13px;
+    background: var(--primary); border-radius: var(--r-control); padding: 7px 13px;
   }
 
   /* SECTIONS */
@@ -244,14 +303,16 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
   .feature {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px;
+    border-radius: var(--r-surface); padding: 24px;
   }
   .feature .ico {
-    width: 38px; height: 38px; border-radius: 10px;
+    width: 38px; height: 38px; border-radius: var(--r-inset);
     display: grid; place-items: center; margin-bottom: 14px;
   }
   .feature .ico svg { width: 20px; height: 20px; }
-  .ico-blue { background: var(--primary-soft); color: var(--primary-deep); }
+  /* icon foreground is --accent-ink, not --primary-deep: the tile is a soft
+     accent surface, and a fill-strength blue on it measured 1.47:1 in dark. */
+  .ico-blue { background: var(--primary-soft); color: var(--accent-ink); }
   .ico-green { background: var(--green-soft); color: var(--green); }
   .ico-amber { background: var(--amber-soft); color: var(--amber); }
   .feature h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
@@ -260,7 +321,7 @@
   .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; counter-reset: step; }
   .step {
     position: relative; background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 24px; counter-increment: step;
+    border-radius: var(--r-surface); padding: 24px; counter-increment: step;
   }
   .step::before {
     content: counter(step);
@@ -268,20 +329,20 @@
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--primary); color: #fff;
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
-    font-size: 13px; font-weight: 500; margin-bottom: 14px;
+    font-size: 13px; font-weight: 500; line-height: 1; margin-bottom: 14px;
   }
   .step h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
   .step p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
   .step code {
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
-    font-size: 12.5px; background: var(--border); border-radius: 5px; padding: 2px 6px;
+    font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
   }
 
   /* GATEKEEPER NOTE */
   .note {
     max-width: 700px; margin: 0 auto;
     background: var(--card); border: 1px solid var(--border);
-    border-left: 4px solid var(--primary); border-radius: 14px; padding: 24px 28px;
+    border-left: 3px solid var(--primary); border-radius: var(--r-surface); padding: 24px 28px;
   }
   .note h3 {
     display: flex; align-items: center; gap: 8px;
@@ -294,7 +355,7 @@
   .note strong { color: var(--text); font-weight: 600; }
   .note code {
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
-    font-size: 12.5px; background: var(--border); border-radius: 5px; padding: 2px 6px;
+    font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
   }
 
   footer {
@@ -303,12 +364,31 @@
     font-size: 13px; color: var(--text-faint); line-height: 2;
   }
   footer a { color: var(--text-muted); font-weight: 500; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
-  footer a:hover { color: var(--text); }
+  @media (hover: hover) {
+    footer a:hover { color: var(--text); }
+  }
   footer .foot-sep { margin: 0 10px; color: var(--border-strong); }
 
+  /* NARROW VIEWPORTS
+     .grid and .steps already collapse via auto-fit + minmax(220px, 1fr).
+     The two fixed-column grids below have no such affordance, so they get an
+     explicit collapse: at 320px the three stat cards would otherwise be ~88px
+     each and the 150px sidebar would leave 130px for the main pane. */
+  @media (max-width: 640px) {
+    .window-body { grid-template-columns: 1fr; }
+    .mock-side {
+      border-right: 0; border-bottom: 1px solid var(--border);
+      display: flex; gap: 6px; overflow-x: auto; padding: 10px;
+    }
+    .side-item { white-space: nowrap; }
+    .mock-cards { grid-template-columns: 1fr; }
+    .nav-inner { height: auto; min-height: 56px; padding: 10px 0; flex-wrap: wrap; gap: 10px; }
+  }
 </style>
 </head>
 <body>
+
+<a class="skip" href="#main">Lompat ke konten utama</a>
 
 <nav>
   <div class="wrap nav-inner">
@@ -320,6 +400,7 @@
   </div>
 </nav>
 
+<main id="main">
 <header class="wrap">
   <div class="badge"><span class="dot"></span> 100% Lokal · Tanpa Telemetri · Open-Source</div>
   <h1>Bersihkan Mac Anda<br><em>tanpa membuka Terminal</em></h1>
@@ -339,9 +420,9 @@
       <small>Mac 2020 ke bawah</small>
     </a>
   </div>
-  <p class="cta-note">Gratis · Versi terbaru langsung dari GitHub Releases · <span id="arch-hint"></span></p>
+  <p class="cta-note">Gratis · Versi terbaru langsung dari GitHub Releases · <span id="arch-hint" role="status"></span></p>
 
-  <div class="stats" id="stats" hidden>
+  <div class="stats" id="stats" role="status" hidden>
     <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a16,16,0,0,1,16-16H72a8,8,0,0,1,0,16H32v64H224V136H184a8,8,0,0,1,0-16h40A16,16,0,0,1,240,136Zm-117.66-2.34a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,108.69V24a8,8,0,0,0-16,0v84.69L85.66,74.34A8,8,0,0,0,74.34,85.66ZM200,168a12,12,0,1,0-12,12A12,12,0,0,0,200,168Z"/></svg> <b id="stat-downloads">-</b> unduhan</span>
     <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a36.36,36.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61a.37.37,0,0,1,.67,0L152,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></svg> <b id="stat-stars">-</b> stars di GitHub</span>
     <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M243.31,136,144,36.69A15.86,15.86,0,0,0,132.69,32H40a8,8,0,0,0-8,8v92.69A15.86,15.86,0,0,0,36.69,144L136,243.31a16,16,0,0,0,22.63,0l84.68-84.68a16,16,0,0,0,0-22.63Zm-96,96L48,132.69V48h84.69L232,147.31ZM96,84A12,12,0,1,1,84,72,12,12,0,0,1,96,84Z"/></svg> <b id="stat-version">-</b> versi terbaru</span>
@@ -454,6 +535,7 @@
     <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
   </div>
 </section>
+</main>
 
 <footer>
   <div class="wrap">
