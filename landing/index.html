@@ -228,12 +228,18 @@
      The copy block (badge -> stats) is its own flex group with a min-height, so
      the title and CTA sit in the optical middle of the hero instead of being
      pushed to the top by padding. The mockup stays below it as the "product
-     proof" beat. min-height uses svh so mobile browser chrome doesn't skew it. */
+     proof" beat. min-height uses svh so mobile browser chrome doesn't skew it.
+
+     The min-height is 46svh/400px, not the 56svh/520px it started at. It used
+     to reserve so much vertical space that the CTA and the mockup ended up
+     ~141px apart at desktop, and the two read as unrelated blocks. 400px keeps
+     the copy optically centred while letting the mockup sit close enough to
+     belong to the same moment. */
   header { padding: var(--space-section) 0; text-align: center; }
   .hero-copy {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; width: 100%;
-    min-height: min(56svh, 520px);
+    min-height: min(46svh, 400px);
   }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
@@ -283,8 +289,13 @@
   }
   .cta-note { margin-top: 16px; font-size: 12.5px; color: var(--text-faint); }
 
-  /* MOCKUP */
-  .mock { margin: 48px auto 0; max-width: 780px; }
+  /* MOCKUP
+     margin-top is 32px. The 64px this replaced (48px margin + the slack the
+     old .hero-copy min-height gave back) read as disconnected, and 16px read as
+     too tight against the CTA note. 32px lands the cta-note -> window gap on
+     80px, which is one step on the 8px grid and holds as a single block
+     without reopening the void. */
+  .mock { margin: 32px auto 0; max-width: 780px; }
   .window {
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--r-surface); box-shadow: var(--shadow); overflow: hidden;
@@ -334,6 +345,19 @@
      reads as a stack of distinct blocks rather than one continuous column.
      `scroll-margin-top` keeps the sticky nav from clipping an anchor target. */
   section { padding-block: var(--space-section); scroll-margin-top: 56px; }
+  /* The steps section breaks the column out to the viewport edges and carries
+     the card fill, so the eye registers a change of scene between the feature
+     grid and the install steps instead of one continuous column. It is
+     --card, not a separate tint: the earlier dedicated band token had to live
+     between --bg and --card, a window so narrow the section read as either
+     invisible or muddy. Reusing the card fill states the intent outright (this
+     section IS a card) and lands on a value that already has a tested
+     relationship to the page. One caveat worth knowing: in light mode --card
+     is only 1.04:1 against --bg, so the separation there is carried by the
+     full-bleed edges rather than by contrast. That is a property of the light
+     palette, not of this rule.
+     The section is full-bleed; the inner .wrap restores the 1040px measure. */
+  .band { padding-inline: 0; background: var(--card); }
   h2 {
     text-align: center; font-size: clamp(24px, 3.6vw, 32px);
     font-weight: 700; letter-spacing: -0.028em; line-height: 1.2;
@@ -358,19 +382,41 @@
   .feature h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px; }
   .feature p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
 
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; counter-reset: step; }
-  .step {
-    position: relative; background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--r-surface); padding: 24px; counter-increment: step;
-  }
-  .step::before {
-    content: counter(step);
-    display: grid; place-items: center;
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--primary); color: #fff;
+  /* STEPS — numbered rail on the tinted .band.
+     These were originally identical to .feature: same 24px padding, same 14px
+     radius, same card fill and hairline. Four feature cards and three step
+     cards in a row of the same shape made the page read as one component
+     stacked twice.
+
+     First attempt at differentiating them was borderless open columns joined
+     by a floating hairline. It failed: with no container of its own the steps
+     had nothing to attach to, the line read as a stray rule rather than a
+     connector, and the section disappeared into the one below it. The fix is
+     the band, not the line. The section now owns a full-bleed tinted plane,
+     which is what gives the open columns an edge to sit against.
+
+     What survives from the first attempt is only the numeral treatment: mono,
+     large, in the accent ink, so the sequence leads. The connector is gone;
+     the band's own edges do that job. The features keep their cards, which is
+     correct there: they are peers with no order, so equal weight is honest. */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; counter-reset: step; }
+  .step { position: relative; counter-increment: step; }
+  /* The numeral is a real element, not a ::before on .step. It has to become a
+     grid item of .step in the narrow layout below, and a pseudo-element cannot
+     be placed as a grid item alongside real siblings reliably across browsers.
+     aria-hidden because the sequence is already conveyed by the h3 order and
+     the surrounding "Tiga langkah" heading. */
+  .step-num {
+    display: block;
+    /* Mono so the numerals read as an index rather than a heading. 28px +
+       weight 500 sits above the 15.5px h3 without shouting. */
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
-    font-size: 13px; font-weight: 500; line-height: 1; margin-bottom: 16px;
+    font-size: 28px; font-weight: 500; line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--accent-ink);
+    margin-bottom: 16px;
   }
+  .step-num::before { content: counter(step); }
   .step h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px; }
   .step p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
   .step code {
@@ -389,7 +435,12 @@
      Collapsed by default. Native <details> so keyboard and AT come free; the
      height animation is progressive enhancement layered on top by script. */
   .note {
-    max-width: 700px; margin: 40px auto 0;
+    /* The summary row runs the full 1008px band column so it aligns with the
+       steps grid above it. The expanded body keeps its own 700px measure: at
+       full width, 14px text runs to roughly 120 characters a line, well past
+       comfortable reading. The cap lives on the body rather than the container
+       so the two concerns stay separate. */
+    margin: 48px 0 0;
     border-top: 1px solid var(--border); padding-top: 16px;
   }
   .note summary {
@@ -423,8 +474,10 @@
   .note svg { width: 17px; height: 17px; color: var(--amber); flex-shrink: 0; }
   /* the animated element: JS pins height + overflow during the transition and
      clears both on finish. Without JS this is a plain block and the details
-     still opens — it just snaps. */
-  .note-body { overflow: hidden; }
+     still opens — it just snaps. Carries the read-measure cap set on .note
+     above; both properties must live in this one rule, since a second
+     .note-body elsewhere would silently drop one of them. */
+  .note-body { overflow: hidden; max-width: 700px; }
   .note p, .note li { font-size: 14px; line-height: 1.65; color: var(--text-muted); }
   .note ol { margin: 8px 0 0 24px; }
   .note li { margin-bottom: 8px; }
@@ -446,10 +499,10 @@
   footer .foot-sep { margin: 0 8px; color: var(--border-strong); }
 
   /* NARROW VIEWPORTS
-     .grid and .steps already collapse via auto-fit + minmax(220px, 1fr).
-     The two fixed-column grids below have no such affordance, so they get an
-     explicit collapse: at 320px the three stat cards would otherwise be ~88px
-     each and the 150px sidebar would leave 130px for the main pane. */
+     .grid collapses via auto-fit + minmax(220px, 1fr). The two fixed-column
+     grids below have no such affordance, so they get an explicit collapse: at
+     320px the three stat cards would otherwise be ~88px each and the 150px
+     sidebar would leave 130px for the main pane. */
   @media (max-width: 640px) {
     .window-body { grid-template-columns: 1fr; }
     .mock-side {
@@ -458,6 +511,51 @@
     }
     .side-item { white-space: nowrap; }
     .mock-cards { grid-template-columns: 1fr; }
+
+    /* CTA — equal widths when stacked.
+       .btn is inline-flex with no width, so it sized to its label: "Unduh untuk
+       Apple Silicon" came out 237px against Intel's 178px, a 59px difference
+       the eye reads as a mistake once the buttons are on separate rows. Below
+       640px the pair always wraps, so stretch both to the row width instead.
+       Desktop keeps intrinsic widths, which is correct there: the labels
+       genuinely differ in length.
+
+       width:100% on .cta is load-bearing, not redundant. .cta is a flex child
+       of .hero-copy, which sets align-items:center, so the row shrink-wraps to
+       its widest button (237px). align-items:stretch on .cta would then only
+       equalise the buttons at 237px rather than filling the column. Taking the
+       full column first is what makes width:100% on .btn land on the gutter. */
+    .cta { flex-direction: column; align-items: stretch; width: 100%; }
+    .btn { width: 100%; }
+
+    /* Steps stack, and the connector goes with them: a horizontal hairline
+       between vertically stacked steps would point at nothing. The .steps grid
+       is explicitly 3 columns above this breakpoint. */
+    .steps { grid-template-columns: 1fr; gap: 32px; }
+    .step::after { content: none; }
+
+    /* Stacked, each step becomes two columns: the numeral in a content-sized
+       track, the text taking the rest. Stacking the numeral above the title
+       spent a 28px row per step and made a three-item list feel like a long
+       scroll; side by side the three steps read as a compact list and the
+       numeral still labels its own step. The numeral drops to 20px here
+       because a 28px digit is visually heavier than the 15.5px title it sits
+       beside, and align-items:start keeps it on the title's cap line rather
+       than floating centred against a tall paragraph. */
+    .step {
+      display: grid; grid-template-columns: auto 1fr;
+      column-gap: 16px; align-items: start;
+    }
+    .step-num { font-size: 20px; margin-bottom: 0; }
+    .step-body { min-width: 0; }
+
+    /* Match the summary's icon-to-label gap to the step numeral-to-body gap
+       (16px). Both are "a marker, then its text", and at 8px vs 16px the
+       accordion row sat visibly tighter than the steps directly above it, so
+       the two left edges read as unrelated. Scoped to the narrow breakpoint:
+       the steps only become two columns here, so that is the only width where
+       the two gaps are meant to agree. */
+    .note summary { gap: 16px; }
     /* `padding: 8px 0` here silently zeroed the inline padding .wrap sets: the
        shorthand resets all four sides, so the nav ran flush to both viewport
        edges below 640px while every other element kept its gutter. Logical
@@ -585,20 +683,30 @@
   </div>
 </section>
 
-<section class="wrap">
+<section class="band">
+  <div class="wrap">
   <h2>Tiga langkah, selesai</h2>
   <div class="steps">
     <div class="step">
-      <h3>Unduh &amp; buka</h3>
-      <p>Unduh file <code>.dmg</code> sesuai chip Mac Anda, lalu seret Muli ke folder Applications.</p>
+      <span class="step-num" aria-hidden="true"></span>
+      <div class="step-body">
+        <h3>Unduh &amp; buka</h3>
+        <p>Unduh file <code>.dmg</code> sesuai chip Mac Anda, lalu seret Muli ke folder Applications.</p>
+      </div>
     </div>
     <div class="step">
-      <h3>Pasang Mole otomatis</h3>
-      <p>Saat pertama dibuka, Muli memasang Mole untuk Anda. Cukup klik Install.</p>
+      <span class="step-num" aria-hidden="true"></span>
+      <div class="step-body">
+        <h3>Pasang Mole otomatis</h3>
+        <p>Saat pertama dibuka, Muli memasang Mole untuk Anda. Cukup klik Install.</p>
+      </div>
     </div>
     <div class="step">
-      <h3>Klik Clean</h3>
-      <p>Lihat pratinjau, lalu klik Clean. Ruang penyimpanan kembali lega dalam hitungan detik.</p>
+      <span class="step-num" aria-hidden="true"></span>
+      <div class="step-body">
+        <h3>Klik Clean</h3>
+        <p>Lihat pratinjau, lalu klik Clean. Ruang penyimpanan kembali lega dalam hitungan detik.</p>
+      </div>
     </div>
   </div>
 
@@ -617,6 +725,7 @@
   <p style="margin-top:8px">Ini hanya perlu dilakukan sekali. Jika yang muncul dialog <strong>&ldquo;Muli is damaged&rdquo;</strong> (rilis lama), buka Terminal dan jalankan <code>xattr -cr /Applications/Muli.app</code> sekali, lalu buka seperti biasa.</p>
       </div>
     </details>
+  </div>
 </section>
 
 </main>
