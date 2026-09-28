@@ -129,19 +129,29 @@
   /* Mono is used only for numerals and short technical labels. */
   .mono { font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
   a { color: inherit; }
-  /* SPACING SCALE. One value per role so the page stops reading as assembled.
-     clamp() keeps the rhythm from collapsing on small screens.
-       --space-section  vertical padding of every top-level section
-       --space-tight    label-to-body gap inside a section heading block  */
+  /* SPACING SCALE — 8px grid.
+     Page-level rhythm only. Every step is a multiple of 8 so blocks stack on a
+     consistent baseline instead of drifting by odd values.
+       --space-section  vertical padding of a top-level section (80px)
+       --space-block    gap between stacked blocks inside a section
+       --space-tight    label-to-body gap under a section heading
+     Deliberately NOT on this grid, and why:
+       - 1px hairline borders: hairlines, not spacing.
+       - compact-control padding (6px 14px) and icon-label gaps (6/7px): these
+         are optically sized to their 12.5-15px labels and icons, not to the
+         page grid. Rounding them up makes controls chunky and gaps loose.
+       - the mockup window's internals: that is a picture of another app
+         rendered at 9-11.5px. The page grid does not govern fake UI.  */
   :root {
-    --space-section: clamp(64px, 6.5vw, 88px);
-    --space-tight: clamp(24px, 3vw, 32px);
+    --space-section: 80px;
+    --space-block: 48px;
+    --space-tight: 32px;
   }
   /* Horizontal only. This used to be `padding: 0 20px`, which zeroed the
      vertical padding on every element that also carries .wrap — including
      header and section, whose own `padding` rules are less specific than a
      class and were therefore silently dropped. */
-  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 24px; }
   :focus-visible {
     outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
@@ -153,7 +163,7 @@
     position: absolute; left: 8px; top: 8px; z-index: 20;
     transform: translateY(-200%);
     background: var(--card); color: var(--text);
-    padding: 10px 16px; border-radius: var(--r-control);
+    padding: 8px 16px; border-radius: var(--r-control);
     border: 1px solid var(--border-strong);
     font-size: 14px; font-weight: 500; text-decoration: none;
   }
@@ -170,7 +180,7 @@
     border-bottom: 1px solid var(--border);
   }
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
   .brand-mark {
     width: 28px; height: 28px; border-radius: var(--r-control);
     background: linear-gradient(135deg, var(--primary), var(--primary-deep));
@@ -201,7 +211,7 @@
 
   /* LIVE STATS */
   .stats {
-    display: flex; justify-content: center; gap: 28px; flex-wrap: wrap;
+    display: flex; justify-content: center; gap: 32px; flex-wrap: wrap;
     margin-top: 24px; font-size: 13px; color: var(--text-muted);
   }
   .stats span { display: inline-flex; align-items: center; gap: 6px; }
@@ -234,14 +244,14 @@
   }
   h1 em { font-style: normal; color: var(--accent-ink); }
   .sub {
-    max-width: 54ch; margin: 20px auto 0;
+    max-width: 54ch; margin: 24px auto 0;
     font-size: 17px; line-height: 1.65; color: var(--text-muted);
     text-wrap: pretty;
   }
-  .cta { margin-top: 32px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
   .btn {
     display: inline-flex; flex-direction: column; align-items: center;
-    text-decoration: none; border-radius: var(--r-control); padding: 13px 28px;
+    text-decoration: none; border-radius: var(--r-control); padding: 16px 24px;
     font-weight: 600; font-size: 15px; line-height: 1.35;
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -331,7 +341,7 @@
   }
   .feature .ico {
     width: 38px; height: 38px; border-radius: var(--r-inset);
-    display: grid; place-items: center; margin-bottom: 14px;
+    display: grid; place-items: center; margin-bottom: 16px;
   }
   .feature .ico svg { width: 20px; height: 20px; }
   /* icon foreground is --accent-ink, not --primary-deep: the tile is a soft
@@ -339,7 +349,7 @@
   .ico-blue { background: var(--primary-soft); color: var(--accent-ink); }
   .ico-green { background: var(--green-soft); color: var(--green); }
   .ico-amber { background: var(--amber-soft); color: var(--amber); }
-  .feature h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
+  .feature h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px; }
   .feature p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
 
   .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; counter-reset: step; }
@@ -353,9 +363,9 @@
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--primary); color: #fff;
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
-    font-size: 13px; font-weight: 500; line-height: 1; margin-bottom: 14px;
+    font-size: 13px; font-weight: 500; line-height: 1; margin-bottom: 16px;
   }
-  .step h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
+  .step h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px; }
   .step p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
   .step code {
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
@@ -366,7 +376,7 @@
   .note {
     max-width: 700px; margin: 0 auto;
     background: var(--card); border: 1px solid var(--border);
-    border-left: 3px solid var(--primary); border-radius: var(--r-surface); padding: 24px 28px;
+    border-left: 3px solid var(--primary); border-radius: var(--r-surface); padding: 24px 32px;
   }
   .note h3 {
     display: flex; align-items: center; gap: 8px;
@@ -374,8 +384,8 @@
   }
   .note h3 svg { width: 17px; height: 17px; color: var(--amber); flex-shrink: 0; }
   .note p, .note li { font-size: 14px; line-height: 1.65; color: var(--text-muted); }
-  .note ol { margin: 10px 0 0 20px; }
-  .note li { margin-bottom: 6px; }
+  .note ol { margin: 8px 0 0 24px; }
+  .note li { margin-bottom: 8px; }
   .note strong { color: var(--text); font-weight: 600; }
   .note code {
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
@@ -384,14 +394,14 @@
 
   footer {
     border-top: 1px solid var(--border);
-    padding: 36px 0 48px; text-align: center;
+    padding: 40px 0 48px; text-align: center;
     font-size: 13px; color: var(--text-faint); line-height: 2;
   }
   footer a { color: var(--text-muted); font-weight: 500; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
   @media (hover: hover) {
     footer a:hover { color: var(--text); }
   }
-  footer .foot-sep { margin: 0 10px; color: var(--border-strong); }
+  footer .foot-sep { margin: 0 8px; color: var(--border-strong); }
 
   /* NARROW VIEWPORTS
      .grid and .steps already collapse via auto-fit + minmax(220px, 1fr).
@@ -406,7 +416,7 @@
     }
     .side-item { white-space: nowrap; }
     .mock-cards { grid-template-columns: 1fr; }
-    .nav-inner { height: auto; min-height: 56px; padding: 10px 0; flex-wrap: wrap; gap: 10px; }
+    .nav-inner { height: auto; min-height: 56px; padding: 8px 0; flex-wrap: wrap; gap: 8px; }
   }
 </style>
 </head>
