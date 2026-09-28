@@ -359,7 +359,18 @@
      The section is full-bleed; the inner .wrap restores the 1040px measure. */
   .band { padding-inline: 0; background: var(--card); }
   h2 {
-    text-align: center; font-size: clamp(24px, 3.6vw, 32px);
+    text-align: center;
+    /* Section titles were reading a size too quiet against the h1 above them.
+       Scaled 120%: 24/32px became 28.8/38.4px, and the viewport term went with
+       it (3.6vw -> 4.32vw) so the whole curve moves rather than just its
+       endpoints — scaling only the min and max would have left mid-size
+       viewports unchanged and produced a title that jumped at the breakpoints.
+
+       Ceiling check: h1 tops out at 52px, so the new 38.4px h2 leaves 13.6px
+       between them. That is enough separation to keep the hierarchy readable;
+       above ~40px the two would start reading as peers rather than as a page
+       headline and a section label. */
+    font-size: clamp(28.8px, 4.32vw, 38.4px);
     font-weight: 700; letter-spacing: -0.028em; line-height: 1.2;
     text-wrap: balance;
     margin-bottom: var(--space-tight);
@@ -492,6 +503,74 @@
     font-family: "Geist Mono", ui-monospace, Menlo, monospace;
     font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
   }
+
+  /* CLOSER — the terminal beat.
+     The page had no ending: hero, features, steps, gatekeeper note, footer.
+     The last thing a visitor read before the footer was a warning about an
+     unsigned build, which is the wrong note to end on. This section sits after
+     the note and gives the page somewhere to actually stop.
+
+     It sits on the page ground, NOT on a plane of its own. It started as a
+     saturated --primary fill, which argued itself well on paper but read as
+     "loud" on the page: the closing beat was the single most saturated thing
+     on a deliberately quiet layout. So it takes --bg like everything else and
+     earns its ending from position instead of colour.
+
+     It still reads as a separate block, because the section above it is .band
+     (--card). The step is --card to --bg, not bg to bg. In light mode that is
+     only 1.04:1 (see the .band comment), so here the full-bleed edges and the
+     80px of padding are doing the separating, which is the same deal the band
+     itself makes in reverse.
+
+     `padding-block: 0` is needed because `section` already sets
+     padding-block: var(--space-section); this wrapper owns none of its own
+     spacing and must not add a second 80px on top of the panel's. */
+  .closer { padding-block: 0; padding-inline: 0; }
+  .closer-panel { padding-block: var(--space-section); text-align: center; }
+  .closer-panel h2 {
+    color: var(--text);
+    /* 24px between the title and the description, per the section's spacing.
+       This is a deliberate step down from the page's --space-tight (32px)
+       that h2 carries everywhere else: here the description is two lines of
+       body copy directly under a much larger title, and at 32px the pair
+       separates far enough to stop reading as one block. Everywhere else on
+       the page the h2 is followed by a card grid or a step rail, which needs
+       the wider gap.
+
+       Nothing else is set here on purpose. This used to carry `max-width:
+       22ch` and `line-height: 1.12`, which made it the only title on the page
+       wrapped to two lines, forced by a <br>, in a 585px column while the
+       other two ran the full 1008px. Same words, visibly different component.
+       Letting it inherit is what makes the three read as one set. */
+    margin-bottom: 24px;
+  }
+  .closer-sub {
+    max-width: 52ch; margin: 0 auto;
+    font-size: 16px; line-height: 1.6; color: var(--text-muted);
+    text-wrap: pretty;
+  }
+  /* The download row mirrors the hero's, so it uses .cta directly rather than
+     restating the flex rules: one row, intrinsic widths, same gap. .cta is
+     only about the desktop row, and the mobile stack below overrides it, so
+     the two stay in agreement automatically.
+
+     The buttons carry NO overrides. They were inverted for the blue plane —
+     white fill, ghost outline — and all of that is gone. On --bg the hero's own
+     .btn-primary and .btn-secondary are already correct, so restating them
+     here would only create a second place to keep in sync. */
+  .closer .cta { margin-top: 32px; }
+  /* The reassurance strip. Separated from the buttons by whitespace only — a
+     hairline here would read as a divider between two halves of one control
+     cluster, and this is a single closing statement. */
+  .closer-meta {
+    margin-top: 24px; font-size: 12.5px; line-height: 1.8;
+    color: var(--text-faint);
+  }
+  .closer-meta .sep { color: var(--border-strong); margin: 0 8px; }
+  /* No link lives in this strip any more — "Dukung pengembangan" was here once
+     and is in the footer already, so the panel had no reason to repeat it. The
+     pseudo-element that grew that link's hit area went with it; this strip is
+     now static text and needs no rules beyond its own type. */
 
   footer {
     border-top: 1px solid var(--border);
@@ -734,6 +813,34 @@
   </div>
 </section>
 
+<section class="closer">
+  <div class="closer-panel">
+    <div class="wrap">
+      <h2>Mac Anda bersih, dalam sekali klik</h2>
+      <p class="closer-sub">
+        Dua klik dari selesai: seret ke Applications, lalu klik Clean.
+        Tidak perlu akun, tidak perlu Terminal, tidak perlu langganan.
+      </p>
+
+      <div class="cta">
+        <a id="dlc-arm" class="btn btn-primary" href="https://github.com/athasamid/muli/releases/latest/download/Muli-arm64.dmg">
+          Unduh untuk Apple Silicon
+          <small>M1 · M2 · M3 · M4</small>
+        </a>
+        <a id="dlc-intel" class="btn btn-secondary" href="https://github.com/athasamid/muli/releases/latest/download/Muli-x64.dmg">
+          Unduh untuk Intel
+          <small>Mac 2020 ke bawah</small>
+        </a>
+      </div>
+
+      <p class="closer-meta">
+        Gratis selamanya<span class="sep">&middot;</span>100% lokal, tanpa telemetri<span class="sep">&middot;</span>
+        <span class="mono">Muli <span id="closer-version">-</span></span>
+      </p>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer>
@@ -768,7 +875,13 @@
       document.getElementById('stat-downloads').textContent = fmt(downloads);
       document.getElementById('stat-stars').textContent = fmt(repo.stargazers_count || 0);
       var latest = releases.filter(function (r) { return !r.draft && !r.prerelease; })[0];
-      document.getElementById('stat-version').textContent = latest ? latest.tag_name : '-';
+      var version = latest ? latest.tag_name : '-';
+      document.getElementById('stat-version').textContent = version;
+      // The closing panel repeats the version. It is a separate node, so the
+      // write above does not reach it; without this line the panel would ship
+      // the "-" placeholder permanently on any fetch that succeeds.
+      var closerVersion = document.getElementById('closer-version');
+      if (closerVersion) closerVersion.textContent = version;
       document.getElementById('stats').hidden = false;
     }).catch(function () { /* stats are optional, keep them hidden */ });
   })();
