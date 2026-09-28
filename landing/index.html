@@ -493,6 +493,126 @@
     font-size: 12.5px; background: var(--surface-sunken); border-radius: var(--r-inline); padding: 2px 6px;
   }
 
+  /* CLOSER — the terminal beat.
+     The page had no ending: hero, features, steps, gatekeeper note, footer.
+     The last thing a visitor read before the footer was a warning about an
+     unsigned build, which is the wrong note to end on. This panel sits after
+     the note and gives the page somewhere to actually stop.
+
+     It is a filled --primary plane rather than a third --card band on purpose.
+     .band already uses --card, and in light mode that is 1.04:1 against --bg
+     (see the .band comment above) — a second card plane below the first would
+     have read as the same block continuing, not as an ending. A saturated fill
+     is the only scene change left that the palette can afford.
+
+     PLANE COLOR IS A SEPARATE TOKEN, not --primary reused directly. White on
+     --primary measures 5.86:1 light, but 4.61:1 dark, and the muted 80% text
+     this panel needs drops to 3.57:1 in dark — under AA for body text. The
+     panel therefore anchors at --primary-deep in both themes (8.49 light /
+     6.35 dark; muted 6.58 / 4.92), so the reassurance line clears AA without
+     a theme-specific opacity hack. Same reason --closer-plane-muted is its
+     own value: it has to be white-at-80%-ish in BOTH themes, which --text-
+     muted cannot be, since that token flips to a light grey in dark. */
+  :root {
+    --closer-plane-top: #004a9e;
+    --closer-plane-bottom: #00356f;
+    --closer-plane-muted: #dbe7f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --closer-plane-top: #0a5fb4;
+      --closer-plane-bottom: #0a4d94;
+      --closer-plane-muted: #d9e6f7;
+    }
+  }
+  :root[data-theme="dark"] {
+    --closer-plane-top: #0a5fb4;
+    --closer-plane-bottom: #0a4d94;
+    --closer-plane-muted: #d9e6f7;
+  }
+  /* `section` sets padding-block: var(--space-section), and that is inherited
+     by this section too — which would sandwich the panel between 80px bands of
+     --bg and turn a full-bleed plane into a floating block. Zeroed here, and
+     the panel carries its own vertical padding instead. `background: var(--bg)`
+     is only ever seen as the sliver on either side at wide viewports, where
+     .wrap's auto margins stop short of the edge; declaring it keeps that sliver
+     the page ground rather than the default canvas. */
+  .closer { padding-block: 0; padding-inline: 0; background: var(--bg); }
+  .closer-panel {
+    padding-block: var(--space-section);
+    background: linear-gradient(180deg, var(--closer-plane-top), var(--closer-plane-bottom));
+    color: #fff;
+    text-align: center;
+  }
+  /* h2 inherits the page heading scale, but the panel sets its own leading:
+     on a saturated plane a 1.2 line-height makes the two-line headline set
+     read as one block of text rather than a headline. */
+  .closer-panel h2 {
+    color: #fff; margin-bottom: 16px; line-height: 1.12;
+    max-width: 22ch; margin-inline: auto;
+  }
+  .closer-sub {
+    max-width: 52ch; margin: 0 auto;
+    font-size: 16px; line-height: 1.6; color: var(--closer-plane-muted);
+    text-wrap: pretty;
+  }
+  /* The download row reuses .cta for its gap and wrap behaviour. The buttons
+     invert: on a blue plane a blue button is a hole, so the primary becomes a
+     white fill carrying the primary-deep ink (8.49 light / 6.35 dark) and the
+     secondary becomes a white-outlined ghost. Same pairing, same order, same
+     labels as the hero — the visitor who scrolled the whole page should meet
+     the same two choices, not a new pair. */
+  .closer-cta { margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .closer-panel .btn-primary {
+    background: #fff; color: var(--primary-deep);
+    box-shadow: 0 8px 20px -8px rgba(0, 30, 70, .45);
+  }
+  .closer-panel .btn-primary:hover { box-shadow: 0 12px 26px -8px rgba(0, 30, 70, .55); }
+  :root[data-theme="dark"] .closer-panel .btn-primary { color: #00417f; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .closer-panel .btn-primary { color: #00417f; }
+  }
+  .closer-panel .btn-secondary {
+    background: transparent; color: #fff;
+    /* Border alpha is measured, not eyeballed: composited over the plane the
+       0.55 this started at gave 3.68:1 light / 3.03:1 dark. That clears the 3:1
+       floor for a non-text boundary, but 3.03 is close enough that a rounding
+       change to the gradient would push it under, so 0.7 is used instead
+       (4.99 / 3.95). */
+    border: 1px solid rgba(255, 255, 255, .7);
+  }
+  @media (hover: hover) {
+    .closer-panel .btn-secondary:hover { border-color: #fff; background: rgba(255, 255, 255, .1); }
+  }
+  /* The reassurance strip. Separated from the buttons by whitespace only —
+     a hairline here would read as a divider between two halves of one
+     control cluster, and this is a single closing statement. */
+  .closer-meta {
+    margin-top: 24px; font-size: 12.5px; line-height: 1.8;
+    color: var(--closer-plane-muted);
+  }
+  .closer-meta b { font-weight: 600; color: #fff; }
+  .closer-meta .sep { opacity: .55; margin: 0 8px; }
+  /* This link measured a 17px tap target, which is the one genuinely small hit
+     area in the panel — the two buttons are 68px.
+
+     The hit area is grown with an absolutely positioned pseudo-element rather
+     than padding-block on the link itself. Padding on an inline-block grows
+     the LINE BOX: at 12.5px/1.8 the row is 22.5px tall, so 10px of padding
+     each side pushed the inline box to 43px and re-flowed the paragraph to
+     1.89 rows, moving the panel. The overlay extends the clickable box past
+     the text without entering layout at all. */
+  .closer-meta a {
+    position: relative; display: inline-block;
+    color: #fff; text-decoration-color: rgba(255, 255, 255, .45); text-underline-offset: 3px;
+  }
+  .closer-meta a::after { content: ""; position: absolute; inset-block: -12px; inset-inline: -4px; }
+  @media (hover: hover) { .closer-meta a:hover { text-decoration-color: #fff; } }
+  /* The global focus ring is --accent-ink, a mid blue that is invisible on
+     this plane. White keeps the ring visible without adding a token, since
+     every focusable thing in this panel is on the blue. */
+  .closer-panel :focus-visible { outline-color: #fff; }
+
   footer {
     border-top: 1px solid var(--border);
     padding: 40px 0 48px; text-align: center;
@@ -533,6 +653,14 @@
        full column first is what makes width:100% on .btn land on the gutter. */
     .cta { flex-direction: column; align-items: stretch; width: 100%; }
     .btn { width: 100%; }
+
+    /* The closer repeats the hero's download row, so it inherits the same
+       stack. It does NOT pick it up from the `.cta` rules above: that class is
+       on the hero row only, and the closer uses .closer-cta. Declared here
+       rather than as a base rule because the reasoning is identical —
+       intrinsic widths are correct on one row, wrong on two. */
+    .closer-cta { flex-direction: column; align-items: stretch; width: 100%; }
+    .closer-panel .btn { width: 100%; }
 
     /* Steps stack, and the connector goes with them: a horizontal hairline
        between vertically stacked steps would point at nothing. The .steps grid
@@ -734,6 +862,35 @@
   </div>
 </section>
 
+<section class="closer">
+  <div class="closer-panel">
+    <div class="wrap">
+      <h2>Sudah tahu caranya.<br>Tinggal sekali klik.</h2>
+      <p class="closer-sub">
+        Ribuan Mac sudah lebih lega. Tidak perlu akun, tidak perlu Terminal,
+        tidak perlu endianess.
+      </p>
+
+      <div class="closer-cta">
+        <a id="dlc-arm" class="btn btn-primary" href="https://github.com/athasamid/muli/releases/latest/download/Muli-arm64.dmg">
+          Unduh untuk Apple Silicon
+          <small>M1 · M2 · M3 · M4</small>
+        </a>
+        <a id="dlc-intel" class="btn btn-secondary" href="https://github.com/athasamid/muli/releases/latest/download/Muli-x64.dmg">
+          Unduh untuk Intel
+          <small>Mac 2020 ke bawah</small>
+        </a>
+      </div>
+
+      <p class="closer-meta">
+        Gratis selamanya<span class="sep">&middot;</span>100% lokal, tanpa telemetri<span class="sep">&middot;</span>
+        <span class="mono">Muli <span id="closer-version">-</span></span><span class="sep">&middot;</span>
+        <a href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">Dukung pengembangan</a>
+      </p>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer>
@@ -768,7 +925,13 @@
       document.getElementById('stat-downloads').textContent = fmt(downloads);
       document.getElementById('stat-stars').textContent = fmt(repo.stargazers_count || 0);
       var latest = releases.filter(function (r) { return !r.draft && !r.prerelease; })[0];
-      document.getElementById('stat-version').textContent = latest ? latest.tag_name : '-';
+      var version = latest ? latest.tag_name : '-';
+      document.getElementById('stat-version').textContent = version;
+      // The closing panel repeats the version. It is a separate node, so the
+      // write above does not reach it; without this line the panel would ship
+      // the "-" placeholder permanently on any fetch that succeeds.
+      var closerVersion = document.getElementById('closer-version');
+      if (closerVersion) closerVersion.textContent = version;
       document.getElementById('stats').hidden = false;
     }).catch(function () { /* stats are optional, keep them hidden */ });
   })();
