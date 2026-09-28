@@ -4,18 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Muli</title>
-<meta name="description" content="Bersihkan Mac Anda tanpa membuka Terminal — aplikasi desktop untuk Mole, gratis dan open-source.">
+<meta name="description" content="Bersihkan Mac Anda tanpa membuka Terminal. Aplikasi desktop untuk Mole, gratis dan open-source.">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <style>
+  /* Self-hosted Geist + Geist Mono (fontsource latin subsets, woff2 only). */
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("fonts/geist-latin-400-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 500; font-display: swap;
+    src: url("fonts/geist-latin-500-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 600; font-display: swap;
+    src: url("fonts/geist-latin-600-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-style: normal; font-weight: 700; font-display: swap;
+    src: url("fonts/geist-latin-700-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist Mono"; font-style: normal; font-weight: 400; font-display: swap;
+    src: url("fonts/geist-mono-latin-400-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist Mono"; font-style: normal; font-weight: 500; font-display: swap;
+    src: url("fonts/geist-mono-latin-500-normal.woff2") format("woff2");
+  }
+
   :root {
     --bg: #faf8fe;
-    --card: #ffffff;
+    --card: #fdfdfd;
     --text: #1a1b1f;
     --text-muted: #414755;
-    --text-faint: #717786;
-    --border: rgba(0, 0, 0, 0.07);
-    --primary: #0070eb;
-    --primary-deep: #0058bc;
+    --text-faint: #666c7a;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.14);
+    /* primary darkened to clear WCAG AA (4.5:1) as TEXT on --bg */
+    --primary: #0062c8;
+    --primary-deep: #004a9e;
     --primary-soft: #d8e2ff;
     --green: #006e28;
     --green-soft: rgba(111, 251, 133, 0.35);
@@ -56,15 +84,27 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-    line-height: 1.55;
+    font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
   }
+  /* Mono is used only for numerals and short technical labels. */
+  .mono { font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
   a { color: inherit; }
-  .wrap { max-width: 1020px; margin: 0 auto; padding: 0 16px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
 
   /* NAV */
   nav {
@@ -74,7 +114,7 @@
     border-bottom: 1px solid var(--border);
   }
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
   .brand-mark {
     width: 28px; height: 28px; border-radius: 8px;
     background: linear-gradient(135deg, var(--primary), var(--primary-deep));
@@ -82,66 +122,76 @@
   }
   .nav-links { display: flex; align-items: center; gap: 8px; }
   .nav-gh, .nav-donate {
-    font-size: 13px; font-weight: 600; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500; text-decoration: none;
     color: var(--text-muted); padding: 7px 14px; border: 1px solid var(--border);
     border-radius: 999px;
+    transition: color .18s ease, border-color .18s ease, background-color .18s ease;
   }
   .nav-donate {
     color: var(--amber); border-color: transparent; background: var(--amber-soft);
   }
-  .nav-gh:hover, .nav-donate:hover { color: var(--text); }
+  .nav-gh:hover, .nav-donate:hover { color: var(--text); border-color: var(--border-strong); }
+  .nav-gh:active, .nav-donate:active { transform: translateY(1px); }
+  .nav-gh svg, .nav-donate svg { width: 15px; height: 15px; flex-shrink: 0; }
 
   /* LIVE STATS */
   .stats {
-    display: flex; justify-content: center; gap: 26px; flex-wrap: wrap;
-    margin-top: 22px; font-size: 13px; color: var(--text-muted);
+    display: flex; justify-content: center; gap: 28px; flex-wrap: wrap;
+    margin-top: 24px; font-size: 13px; color: var(--text-muted);
   }
   .stats span { display: inline-flex; align-items: center; gap: 6px; }
-  .stats b { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stats svg { width: 15px; height: 15px; color: var(--text-faint); flex-shrink: 0; }
+  .stats b { font-size: 15px; color: var(--text); font-weight: 600; }
 
   /* HERO */
-  header { padding: 72px 0 40px; text-align: center; }
+  header { padding: 72px 0 48px; text-align: center; }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    font-size: 12.5px; font-weight: 500; color: var(--text-muted);
     border: 1px solid var(--border); background: var(--card);
-    padding: 6px 14px; border-radius: 999px; margin-bottom: 22px;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 24px;
   }
   .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #27C93F; }
   h1 {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    font-size: clamp(30px, 5.5vw, 48px);
-    font-weight: 800; letter-spacing: -0.025em; line-height: 1.12;
+    font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: clamp(32px, 5.6vw, 52px);
+    font-weight: 700; letter-spacing: -0.032em; line-height: 1.08;
+    text-wrap: balance;
   }
   h1 em { font-style: normal; color: var(--primary); }
   .sub {
-    max-width: 560px; margin: 18px auto 0;
-    font-size: 16px; color: var(--text-muted);
+    max-width: 54ch; margin: 20px auto 0;
+    font-size: 17px; line-height: 1.65; color: var(--text-muted);
+    text-wrap: pretty;
   }
   .cta { margin-top: 32px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   .btn {
     display: inline-flex; flex-direction: column; align-items: center;
-    text-decoration: none; border-radius: 14px; padding: 12px 26px;
-    font-weight: 700; font-size: 15px; line-height: 1.3;
-    transition: transform .12s ease, box-shadow .12s ease;
+    text-decoration: none; border-radius: 12px; padding: 13px 28px;
+    font-weight: 600; font-size: 15px; line-height: 1.35;
+    transition: transform .14s cubic-bezier(.16,1,.3,1), box-shadow .14s ease, border-color .14s ease;
   }
-  .btn:hover { transform: translateY(-1px); }
-  .btn small { font-size: 11px; font-weight: 500; opacity: .85; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .btn small { font-size: 12px; font-weight: 400; color: inherit; opacity: .78; }
   .btn-primary {
     background: linear-gradient(180deg, var(--primary), var(--primary-deep));
-    color: #fff; box-shadow: 0 8px 20px -8px rgba(0, 112, 235, .6);
+    color: #fff; box-shadow: 0 8px 20px -8px rgba(0, 98, 200, .5);
   }
+  .btn-primary:hover { box-shadow: 0 12px 26px -8px rgba(0, 98, 200, .6); }
   .btn-secondary {
     background: var(--card); color: var(--text);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-strong);
   }
-  .cta-note { margin-top: 14px; font-size: 12px; color: var(--text-faint); }
+  .btn-secondary:hover { border-color: var(--text-faint); }
+  .cta-note { margin-top: 16px; font-size: 12.5px; color: var(--text-faint); }
 
   /* MOCKUP */
   .mock { margin: 48px auto 0; max-width: 780px; }
   .window {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
+    border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
     text-align: left;
   }
   .titlebar {
@@ -170,8 +220,8 @@
   }
   .mock-card .k { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
   .mock-card .v { font-size: 15px; font-weight: 800; margin: 3px 0 6px; }
-  .bar { height: 3px; border-radius: 99px; background: var(--border); overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 99px; }
+  .bar { height: 3px; border-radius: 999px; background: var(--border); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; }
   .mock-banner {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
@@ -184,68 +234,78 @@
   }
 
   /* SECTIONS */
-  section { padding: 56px 0; }
-  .sec-label {
-    text-align: center; font-size: 11px; font-weight: 700;
-    letter-spacing: .12em; text-transform: uppercase; color: var(--primary);
-    margin-bottom: 8px;
-  }
+  section { padding: 72px 0; }
   h2 {
-    text-align: center; font-size: clamp(22px, 3.5vw, 30px);
-    font-weight: 800; letter-spacing: -0.02em; margin-bottom: 34px;
+    text-align: center; font-size: clamp(24px, 3.6vw, 32px);
+    font-weight: 700; letter-spacing: -0.028em; line-height: 1.2;
+    text-wrap: balance;
+    margin-bottom: 40px;
   }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
   .feature {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 22px;
+    border-radius: 16px; padding: 24px;
   }
   .feature .ico {
-    width: 38px; height: 38px; border-radius: 11px;
-    display: grid; place-items: center; font-size: 18px; margin-bottom: 13px;
+    width: 38px; height: 38px; border-radius: 10px;
+    display: grid; place-items: center; margin-bottom: 14px;
   }
-  .ico-blue { background: var(--primary-soft); }
-  .ico-green { background: var(--green-soft); }
-  .ico-amber { background: var(--amber-soft); }
-  .feature h3 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
-  .feature p { font-size: 13px; color: var(--text-muted); }
+  .feature .ico svg { width: 20px; height: 20px; }
+  .ico-blue { background: var(--primary-soft); color: var(--primary-deep); }
+  .ico-green { background: var(--green-soft); color: var(--green); }
+  .ico-amber { background: var(--amber-soft); color: var(--amber); }
+  .feature h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
+  .feature p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
 
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: step; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; counter-reset: step; }
   .step {
     position: relative; background: var(--card); border: 1px solid var(--border);
-    border-radius: 16px; padding: 22px; counter-increment: step;
+    border-radius: 14px; padding: 24px; counter-increment: step;
   }
   .step::before {
     content: counter(step);
     display: grid; place-items: center;
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--primary); color: #fff;
-    font-size: 13px; font-weight: 800; margin-bottom: 13px;
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px; font-weight: 500; margin-bottom: 14px;
   }
-  .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
-  .step p { font-size: 13px; color: var(--text-muted); }
+  .step h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 6px; }
+  .step p { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
   .step code {
-    font-family: "SF Mono", ui-monospace, Menlo, monospace;
-    font-size: 11.5px; background: var(--border); border-radius: 5px; padding: 1.5px 6px;
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px; background: var(--border); border-radius: 5px; padding: 2px 6px;
   }
 
   /* GATEKEEPER NOTE */
   .note {
-    max-width: 680px; margin: 0 auto;
+    max-width: 700px; margin: 0 auto;
     background: var(--card); border: 1px solid var(--border);
-    border-left: 4px solid var(--primary); border-radius: 14px; padding: 20px 24px;
+    border-left: 4px solid var(--primary); border-radius: 14px; padding: 24px 28px;
   }
-  .note h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-  .note p, .note li { font-size: 13px; color: var(--text-muted); }
-  .note ol { margin: 8px 0 0 18px; }
-  .note li { margin-bottom: 4px; }
-  .note strong { color: var(--text); }
+  .note h3 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 8px;
+  }
+  .note h3 svg { width: 17px; height: 17px; color: var(--amber); flex-shrink: 0; }
+  .note p, .note li { font-size: 14px; line-height: 1.65; color: var(--text-muted); }
+  .note ol { margin: 10px 0 0 20px; }
+  .note li { margin-bottom: 6px; }
+  .note strong { color: var(--text); font-weight: 600; }
+  .note code {
+    font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px; background: var(--border); border-radius: 5px; padding: 2px 6px;
+  }
 
   footer {
     border-top: 1px solid var(--border);
-    padding: 30px 0 40px; text-align: center;
-    font-size: 12.5px; color: var(--text-faint);
+    padding: 36px 0 48px; text-align: center;
+    font-size: 13px; color: var(--text-faint); line-height: 2;
   }
-  footer a { color: var(--text-muted); font-weight: 600; }
+  footer a { color: var(--text-muted); font-weight: 500; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+  footer a:hover { color: var(--text); }
+  footer .foot-sep { margin: 0 10px; color: var(--border-strong); }
+
 </style>
 </head>
 <body>
@@ -254,8 +314,8 @@
   <div class="wrap nav-inner">
     <div class="brand"><span class="brand-mark">✦</span> Muli</div>
     <div class="nav-links">
-      <a class="nav-donate" href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">☕ Donasi</a>
-      <a class="nav-gh" href="https://github.com/athasamid/muli" target="_blank" rel="noopener">GitHub ↗</a>
+      <a class="nav-donate" href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M80,56V24a8,8,0,0,1,16,0V56a8,8,0,0,1-16,0Zm40,8a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,120,64Zm32,0a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,152,64Zm96,56v8a40,40,0,0,1-37.51,39.91,96.59,96.59,0,0,1-27,40.09H208a8,8,0,0,1,0,16H32a8,8,0,0,1,0-16H56.54A96.3,96.3,0,0,1,24,136V88a8,8,0,0,1,8-8H208A40,40,0,0,1,248,120ZM200,96H40v40a80.27,80.27,0,0,0,45.12,72h69.76A80.27,80.27,0,0,0,200,136Zm32,24a24,24,0,0,0-16-22.62V136a95.78,95.78,0,0,1-1.2,15A24,24,0,0,0,232,128Z"/></svg> Donasi</a>
+      <a class="nav-gh" href="https://github.com/athasamid/muli" target="_blank" rel="noopener"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a16,16,0,0,1,16-16H72a8,8,0,0,1,0,16H32v64H224V136H184a8,8,0,0,1,0-16h40A16,16,0,0,1,240,136Zm-117.66-2.34a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,108.69V24a8,8,0,0,0-16,0v84.69L85.66,74.34A8,8,0,0,0,74.34,85.66ZM200,168a12,12,0,1,0-12,12A12,12,0,0,0,200,168Z"/></svg> GitHub</a>
     </div>
   </div>
 </nav>
@@ -264,7 +324,7 @@
   <div class="badge"><span class="dot"></span> 100% Lokal · Tanpa Telemetri · Open-Source</div>
   <h1>Bersihkan Mac Anda<br><em>tanpa membuka Terminal</em></h1>
   <p class="sub">
-    Muli adalah aplikasi desktop untuk <strong>Mole</strong> — pembersih macOS
+    Muli adalah aplikasi desktop untuk <strong>Mole</strong>, pembersih macOS
     open-source. Hapus cache, log, dan file sampah dengan satu klik.
     Tanpa perintah, tanpa terminal.
   </p>
@@ -282,9 +342,9 @@
   <p class="cta-note">Gratis · Versi terbaru langsung dari GitHub Releases · <span id="arch-hint"></span></p>
 
   <div class="stats" id="stats" hidden>
-    <span>⬇ <b id="stat-downloads">–</b> unduhan</span>
-    <span>★ <b id="stat-stars">–</b> stars di GitHub</span>
-    <span>🏷 <b id="stat-version">–</b> versi terbaru</span>
+    <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M240,136v64a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V136a16,16,0,0,1,16-16H72a8,8,0,0,1,0,16H32v64H224V136H184a8,8,0,0,1,0-16h40A16,16,0,0,1,240,136Zm-117.66-2.34a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,108.69V24a8,8,0,0,0-16,0v84.69L85.66,74.34A8,8,0,0,0,74.34,85.66ZM200,168a12,12,0,1,0-12,12A12,12,0,0,0,200,168Z"/></svg> <b id="stat-downloads">-</b> unduhan</span>
+    <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a36.36,36.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61a.37.37,0,0,1,.67,0L152,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></svg> <b id="stat-stars">-</b> stars di GitHub</span>
+    <span><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M243.31,136,144,36.69A15.86,15.86,0,0,0,132.69,32H40a8,8,0,0,0-8,8v92.69A15.86,15.86,0,0,0,36.69,144L136,243.31a16,16,0,0,0,22.63,0l84.68-84.68a16,16,0,0,0,0-22.63Zm-96,96L48,132.69V48h84.69L232,147.31ZM96,84A12,12,0,1,1,84,72,12,12,0,0,1,96,84Z"/></svg> <b id="stat-version">-</b> versi terbaru</span>
   </div>
 
   <div class="mock">
@@ -293,7 +353,7 @@
         <span class="light" style="background:#FF5F56"></span>
         <span class="light" style="background:#FFBD2E"></span>
         <span class="light" style="background:#27C93F"></span>
-        <span class="name">Muli — Overview</span>
+        <span class="name">Muli, Overview</span>
       </div>
       <div class="window-body">
         <div class="mock-side">
@@ -336,34 +396,32 @@
 </header>
 
 <section class="wrap">
-  <p class="sec-label">Kenapa Muli</p>
   <h2>Kuat seperti terminal, mudah seperti aplikasi</h2>
   <div class="grid">
     <div class="feature">
-      <div class="ico ico-blue">🧹</div>
+      <div class="ico ico-blue"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M235.5,216.81c-22.56-11-35.5-34.58-35.5-64.8V134.73a15.94,15.94,0,0,0-10.09-14.87L165,110a8,8,0,0,1-4.48-10.34l21.32-53a28,28,0,0,0-16.1-37,28.14,28.14,0,0,0-35.82,16,.61.61,0,0,0,0,.12L108.9,79a8,8,0,0,1-10.37,4.49L73.11,73.14A15.89,15.89,0,0,0,55.74,76.8C34.68,98.45,24,123.75,24,152a111.45,111.45,0,0,0,31.18,77.53A8,8,0,0,0,61,232H232a8,8,0,0,0,3.5-15.19ZM67.14,88l25.41,10.3a24,24,0,0,0,31.23-13.45l21-53c2.56-6.11,9.47-9.27,15.43-7a12,12,0,0,1,6.88,15.92L145.69,93.76a24,24,0,0,0,13.43,31.14L184,134.73V152c0,.33,0,.66,0,1L55.77,101.71A108.84,108.84,0,0,1,67.14,88Zm48,128a87.53,87.53,0,0,1-24.34-42,8,8,0,0,0-15.49,4,105.16,105.16,0,0,0,18.36,38H64.44A95.54,95.54,0,0,1,40,152a85.9,85.9,0,0,1,7.73-36.29l137.8,55.12c3,18,10.56,33.48,21.89,45.16Z"/></svg></div>
       <h3>Bersih satu klik</h3>
-      <p>Cache aplikasi, log, file sementara, dan sampah developer dibersihkan otomatis — dokumen pribadi tidak pernah disentuh.</p>
+      <p>Cache aplikasi, log, file sementara, dan sampah developer dibersihkan otomatis. Dokumen pribadi tidak pernah disentuh.</p>
     </div>
     <div class="feature">
-      <div class="ico ico-green">👀</div>
+      <div class="ico ico-green"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg></div>
       <h3>Pratinjau dulu</h3>
-      <p>Mode Preview menunjukkan apa saja yang akan dihapus dan berapa ruang yang didapat — tanpa menghapus apa pun.</p>
+      <p>Mode Preview menunjukkan apa saja yang akan dihapus dan berapa ruang yang didapat, tanpa menghapus apa pun.</p>
     </div>
     <div class="feature">
-      <div class="ico ico-amber">🔒</div>
+      <div class="ico ico-amber"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Zm-68-56a12,12,0,1,1-12-12A12,12,0,0,1,140,152Z"/></svg></div>
       <h3>Aman &amp; privat</h3>
       <p>Password Anda diteruskan langsung ke macOS dan tidak pernah disimpan. Semua berjalan lokal, tanpa telemetri.</p>
     </div>
     <div class="feature">
-      <div class="ico ico-blue">⚙️</div>
+      <div class="ico ico-blue"><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.21,107.21,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.71,107.71,0,0,0-26.25-10.87,8,8,0,0,0-7.06,1.49L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.21,107.21,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.2,107.2,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0,1.49-7.06l2.64-23.72q1.48-1.56,3-3ZM192,180.16a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z"/></svg></div>
       <h3>Mesin Mole</h3>
-      <p>Ditenagai <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">Mole</a>, pembersih macOS open-source yang teruji — Muli memasangnya otomatis untuk Anda.</p>
+      <p>Ditenagai <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">Mole</a>, pembersih macOS open-source yang teruji. Muli memasangnya otomatis untuk Anda.</p>
     </div>
   </div>
 </section>
 
 <section class="wrap">
-  <p class="sec-label">Cara pakai</p>
   <h2>Tiga langkah, selesai</h2>
   <div class="steps">
     <div class="step">
@@ -372,7 +430,7 @@
     </div>
     <div class="step">
       <h3>Pasang Mole otomatis</h3>
-      <p>Saat pertama dibuka, Muli memeriksa dan memasang mesin pembersih Mole untuk Anda — cukup klik Install.</p>
+      <p>Saat pertama dibuka, Muli memeriksa dan memasang mesin pembersih Mole untuk Anda, cukup klik Install.</p>
     </div>
     <div class="step">
       <h3>Klik Clean</h3>
@@ -383,7 +441,7 @@
 
 <section class="wrap">
   <div class="note">
-    <h3>⚠️ Muncul peringatan saat pertama membuka?</h3>
+    <h3><svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236,104.47l-32-7.93a79.66,79.66,0,0,0-13.86-33.37l19.83-25.79a8,8,0,0,0,1.48-9.59,79.23,79.23,0,0,0-65.89-43.69,8,8,0,0,0-8.4,3.85l-11.78,29a79.11,79.11,0,0,0-31.75,0L82,11.36a8,8,0,0,0-8.4-3.85,79.23,79.23,0,0,0-65.89,43.69,8,8,0,0,0,1.48,9.59l19.83,25.79a79.66,79.66,0,0,0-13.86,33.37l-32,7.93a8,8,0,0,0-5.39,7.4v73.56a8,8,0,0,0,5.39,7.4l32,7.93a79.51,79.51,0,0,0,7.36,22.97l-19.83,25.79a8,8,0,0,0,1.48,9.59,79.23,79.23,0,0,0,65.89,43.69,8,8,0,0,0,8.4-3.85l11.77-29a79.09,79.09,0,0,0,31.76,0l11.78,29a8,8,0,0,0,8.4,3.85,79.23,79.23,0,0,0,65.89-43.69,8,8,0,0,0-1.48-9.59l-19.83-25.79a79.51,79.51,0,0,0,7.36-22.97l32-7.93A8,8,0,0,0,241.39,185V111.44a8,8,0,0,0-5.39-6.97ZM128,188a52,52,0,1,1,52-52A52.06,52.06,0,0,1,128,188Zm37.78-132.68a20,20,0,1,1-20-20A20,20,0,0,1,165.78,55.32Z"/></svg> Muncul peringatan saat pertama membuka?</h3>
     <p>
       Muli belum ditandatangani dengan sertifikat Apple Developer (aplikasi ini gratis
       dan open-source), jadi macOS akan menampilkan peringatan sekali di awal. Cara membukanya:
@@ -399,11 +457,11 @@
 
 <footer>
   <div class="wrap">
-    Muli — open-source, dibangun di atas
-    <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">tw93/mole</a> ·
-    <a href="https://github.com/athasamid/muli" target="_blank" rel="noopener">Kode sumber</a> ·
-    <a href="https://github.com/athasamid/muli/releases" target="_blank" rel="noopener">Semua rilis</a> ·
-    <a href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">☕ Dukung pengembangan</a>
+    Muli, open-source, dibangun di atas
+    <a href="https://github.com/tw93/mole" target="_blank" rel="noopener">tw93/mole</a><span class="foot-sep">&middot;</span>
+    <a href="https://github.com/athasamid/muli" target="_blank" rel="noopener">Kode sumber</a><span class="foot-sep">&middot;</span>
+    <a href="https://github.com/athasamid/muli/releases" target="_blank" rel="noopener">Semua rilis</a><span class="foot-sep">&middot;</span>
+    <a href="https://app.midtrans.com/payment-links/62ef97ee-b1b0-4a43-ba8a-35fbcfa1c49c-WxGjbLbf" target="_blank" rel="noopener">Dukung pengembangan</a>
   </div>
 </footer>
 
@@ -429,9 +487,9 @@
       document.getElementById('stat-downloads').textContent = fmt(downloads);
       document.getElementById('stat-stars').textContent = fmt(repo.stargazers_count || 0);
       var latest = releases.filter(function (r) { return !r.draft && !r.prerelease; })[0];
-      document.getElementById('stat-version').textContent = latest ? latest.tag_name : '–';
+      document.getElementById('stat-version').textContent = latest ? latest.tag_name : '-';
       document.getElementById('stats').hidden = false;
-    }).catch(function () { /* stats are optional — keep them hidden */ });
+    }).catch(function () { /* stats are optional, keep them hidden */ });
   })();
 
   // Best-effort chip detection to highlight the right download.
@@ -447,7 +505,7 @@
         if (/Apple (M\d|GPU)/i.test(renderer)) isAppleSilicon = true;
       }
       if (navigator.platform === 'MacIntel' && !isAppleSilicon) {
-        // Could still be Apple Silicon Safari reporting MacIntel — only swap
+        // Could still be Apple Silicon Safari reporting MacIntel. Only swap
         // emphasis when we positively detected an Intel GPU string.
         hint.textContent = 'Tidak yakin chip Mac Anda? Klik  → About This Mac.';
       } else if (isAppleSilicon) {
