@@ -1,7 +1,8 @@
-const { ipcMain } = require('electron')
+const { ipcMain, shell, clipboard } = require('electron')
 const { execFile } = require('child_process')
 const os = require('os')
 const fs = require('fs')
+const path = require('path')
 
 let cachedMacosVersion = null
 
@@ -32,6 +33,29 @@ function getAvailableMemory() {
 }
 
 module.exports = function registerSystemIpc() {
+    // Read-only Finder helpers for absolute, existing paths.
+    function validPath(target) {
+        return typeof target === 'string' && path.isAbsolute(target) && fs.existsSync(target)
+    }
+
+    ipcMain.handle('system:reveal', (_event, target) => {
+        if (!validPath(target)) return false
+        shell.showItemInFolder(target)
+        return true
+    })
+
+    ipcMain.handle('system:open', async (_event, target) => {
+        if (!validPath(target)) return false
+        const error = await shell.openPath(target)
+        return !error
+    })
+
+    ipcMain.handle('system:copy', (_event, text) => {
+        if (typeof text !== 'string') return false
+        clipboard.writeText(text)
+        return true
+    })
+
     ipcMain.handle('system:check', () => {
         return {
             platform: process.platform,

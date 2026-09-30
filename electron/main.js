@@ -54,9 +54,11 @@ app.whenReady().then(() => {
     })
 })
 
-// Don't leave a running mo clean (and its sudo keepalive) behind
+// Don't leave a running mo clean (and its sudo keepalive) or a background
+// scan behind
 app.on('before-quit', () => {
     MoleService.cancel()
+    MoleService.cancelScan()
 })
 
 app.on('window-all-closed', () => {

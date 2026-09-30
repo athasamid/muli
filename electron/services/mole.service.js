@@ -2,10 +2,14 @@ const os = require('os')
 const fs = require('fs')
 const path = require('path')
 const pty = require('node-pty')
-const { BrowserWindow } = require('electron')
+const { execFile } = require('child_process')
+const { BrowserWindow, shell } = require('electron')
 const Storage = require('./storage.service')
 const stripAnsi = require('strip-ansi').default
 const { createCleanParser } = require('./mole.parser')
+const { parsePurgePreview } = require('./purge.parser')
+const { parseInstallerList } = require('./installer.parser')
+const { parseCapabilities } = require('./capabilities')
 const History = require('./history.service')
 const Log = require('./log.service')
 
@@ -24,6 +28,10 @@ const INSTALL_CMD =
 
 // Single operation at a time (clean OR install). node-pty process.
 let activeProcess = null
+
+// Read-only scans (analyze / purge preview / installer list) get their own
+// slot so a long scan never blocks a cleanup and vice versa.
+let activeScan = null
 
 function buildEnv() {
     const basePath = process.env.PATH || '/usr/bin:/bin:/usr/sbin:/sbin'
@@ -239,24 +247,31 @@ function optimize(event, opts = {}) {
     })
 }
 
-function listUninstallApps(event) {
+function shQuote(value) {
+    return `'${String(value).replace(/'/g, `'\\''`)}'`
+}
+
+// mo emits machine-readable output only when stdout is NOT a TTY, but live
+// spinner progress only when the terminal IS one. Running it in a pty with
+// stdout redirected to a temp file gives both: progress lines stream to the
+// UI on statusChannel while the real output lands in the file.
+// `allowPartial` accepts a non-zero exit when output was still produced
+// (e.g. purge skipping one scan root that timed out).
+function runScanToFile(event, args, statusChannel, { allowPartial = false } = {}) {
     const win = BrowserWindow.fromWebContents(event.sender)
     const molePath = resolveMolePath()
-    Log.log('mole', 'uninstall list requested')
+    Log.log('mole', 'scan requested:', JSON.stringify(args))
     if (!molePath) {
-        Log.log('mole', 'uninstall list blocked: mole binary not found')
+        Log.log('mole', 'scan blocked: mole binary not found')
         return Promise.reject(new Error('mole_not_found'))
     }
-    if (activeProcess) {
-        Log.log('mole', 'uninstall list blocked: another operation is still running')
-        return Promise.reject(new Error('operation_in_progress'))
+    if (activeScan) {
+        Log.log('mole', 'scan blocked: another scan is still running')
+        return Promise.reject(new Error('scan_in_progress'))
     }
 
-    // mo emits the JSON list only when stdout is NOT a TTY, but live spinner
-    // progress on stderr only when stderr IS one. Running it in a pty with
-    // stdout redirected to a temp file gives both: progress lines stream to
-    // the UI while the JSON lands in the file.
-    const outFile = path.join(os.tmpdir(), `muli-uninstall-list-${Date.now()}.json`)
+    const outFile = path.join(os.tmpdir(), `muli-scan-${Date.now()}.out`)
+    const command = `${shQuote(molePath)} ${args.map(shQuote).join(' ')} > ${shQuote(outFile)}`
 
     return new Promise((resolve, reject) => {
         let pendingLine = ''
@@ -270,26 +285,28 @@ function listUninstallApps(event) {
                 const trimmed = line.trim()
                 if (!trimmed) continue
                 lastLine = trimmed
-                win.webContents.send('mole:uninstall:scan-status', { line: trimmed })
+                win.webContents.send(statusChannel, { line: trimmed })
             }
         }
 
         try {
-            activeProcess = spawnPty(
+            activeScan = spawnPty(
                 'sh',
-                ['-c', `'${molePath}' uninstall --list > '${outFile}'`],
+                ['-c', command],
                 emitStatus,
                 ({ exitCode }) => {
-                    activeProcess = null
+                    activeScan = null
                     const finalLine = pendingLine.trim()
                     if (finalLine) {
                         lastLine = finalLine
-                        win.webContents.send('mole:uninstall:scan-status', { line: finalLine })
+                        win.webContents.send(statusChannel, { line: finalLine })
                     }
 
                     let output = ''
                     try {
-                        output = fs.readFileSync(outFile, 'utf8')
+                        // Some commands (e.g. installer's selector) still
+                        // write ANSI control codes into redirected stdout.
+                        output = stripAnsi(fs.readFileSync(outFile, 'utf8'))
                     } catch {
                         // scan failed before producing output
                     }
@@ -299,24 +316,44 @@ function listUninstallApps(event) {
                         // never created, or already gone
                     }
 
-                    if (exitCode !== 0) {
+                    if (exitCode !== 0 && !(allowPartial && output.trim())) {
                         return reject(new Error(lastLine || `scan_failed_exit_${exitCode}`))
                     }
-                    try {
-                        const apps = JSON.parse(output)
-                        Log.log('mole', `uninstall list: ${apps.length} apps`)
-                        resolve(apps)
-                    } catch {
-                        Log.log('mole', 'uninstall list: invalid JSON output', output.slice(0, 200))
-                        reject(new Error(lastLine || 'scan_invalid_output'))
-                    }
+                    resolve({ output, exitCode, lastLine })
                 }
             )
         } catch (err) {
-            activeProcess = null
+            activeScan = null
             reject(err)
         }
     })
+}
+
+function cancelScan() {
+    if (!activeScan) return
+    Log.log('mole', 'cancel: killing active scan')
+    try {
+        activeScan.kill()
+    } catch {
+        // already dead
+    }
+    activeScan = null
+}
+
+async function listUninstallApps(event) {
+    const { output, lastLine } = await runScanToFile(
+        event,
+        ['uninstall', '--list'],
+        'mole:uninstall:scan-status'
+    )
+    try {
+        const apps = JSON.parse(output)
+        Log.log('mole', `uninstall list: ${apps.length} apps`)
+        return apps
+    } catch {
+        Log.log('mole', 'uninstall list: invalid JSON output', output.slice(0, 200))
+        throw new Error(lastLine || 'scan_invalid_output')
+    }
 }
 
 function uninstall(event, appNames) {
@@ -330,6 +367,171 @@ function uninstall(event, appNames) {
     }
 
     runOperation(event, 'uninstall', appNames, { targets: appNames }, { autoConfirm: true })
+}
+
+// ============================================================
+// Disk analyzer (mo analyze --json)
+// ============================================================
+
+async function analyze(event, opts = {}) {
+    const scanPath = typeof opts.path === 'string' && opts.path.trim() ? opts.path.trim() : null
+
+    if (scanPath) {
+        if (!path.isAbsolute(scanPath) || !fs.existsSync(scanPath)) {
+            throw new Error('invalid_path')
+        }
+    } else if (!opts.refresh) {
+        // The machine-wide overview takes minutes; serve the cached scan and
+        // let the UI offer an explicit rescan.
+        const cached = Storage.get('analyzeOverview')
+        if (cached?.data) return { ...cached.data, scannedAt: cached.at, cached: true }
+    }
+
+    const args = scanPath ? ['analyze', '--json', scanPath] : ['analyze', '--json']
+    const { output, lastLine } = await runScanToFile(event, args, 'mole:analyze:status')
+
+    let data
+    try {
+        data = JSON.parse(output)
+    } catch {
+        Log.log('mole', 'analyze: invalid JSON output', output.slice(0, 200))
+        throw new Error(lastLine || 'scan_invalid_output')
+    }
+
+    const scannedAt = new Date().toISOString()
+    if (!scanPath) Storage.set('analyzeOverview', { at: scannedAt, data })
+    return { ...data, scannedAt, cached: false }
+}
+
+// ============================================================
+// Developer cleanup (mo purge)
+// ============================================================
+
+async function purgePreview(event) {
+    const { output, exitCode } = await runScanToFile(
+        event,
+        ['purge', '--dry-run'],
+        'mole:purge:scan-status',
+        { allowPartial: true }
+    )
+    const preview = parsePurgePreview(output)
+    Log.log('mole', `purge preview: ${preview.items.length} artifacts, exit ${exitCode}`)
+    return preview
+}
+
+function purgeRun(event) {
+    // The UI shows its own confirmation with the previewed artifacts first;
+    // --yes then runs the eligible cleanup unattended.
+    runOperation(event, 'purge', ['--yes'], {}, { autoConfirm: true })
+}
+
+// ============================================================
+// Installer cleanup (mo installer + Electron trash)
+// ============================================================
+
+// Only paths returned by the latest installer scan may be trashed — a
+// session allowlist so the renderer can never point this at other files.
+let trashableInstallers = new Set()
+
+const INSTALLER_LOCATION_DIRS = ['Downloads', 'Desktop', 'Documents']
+
+function resolveInstallerPath(item) {
+    const home = os.homedir()
+    const candidates = []
+    if (INSTALLER_LOCATION_DIRS.includes(item.location)) {
+        candidates.push(path.join(home, item.location, item.name))
+    }
+    if (item.location === 'Home') candidates.push(path.join(home, item.name))
+    candidates.push(path.join(home, 'Downloads', item.name))
+    return candidates.find((candidate) => fs.existsSync(candidate)) ?? null
+}
+
+async function installerList(event) {
+    const { output } = await runScanToFile(
+        event,
+        ['installer', '--dry-run'],
+        'mole:installer:scan-status'
+    )
+    const items = parseInstallerList(output).map((item) => ({
+        ...item,
+        path: resolveInstallerPath(item)
+    }))
+    trashableInstallers = new Set(items.map((item) => item.path).filter(Boolean))
+    Log.log('mole', `installer list: ${items.length} files`)
+    return items
+}
+
+async function trashInstallers(event, paths) {
+    if (!Array.isArray(paths) || paths.length === 0) throw new Error('no_files_selected')
+    const startedAt = new Date().toISOString()
+    const trashed = []
+    const failed = []
+
+    for (const target of paths) {
+        if (typeof target !== 'string' || !trashableInstallers.has(target)) {
+            failed.push({ path: String(target), error: 'not_in_scan' })
+            continue
+        }
+        try {
+            await shell.trashItem(target)
+            trashableInstallers.delete(target)
+            trashed.push(target)
+            Log.log('mole', 'installer trashed:', target)
+        } catch (err) {
+            failed.push({ path: target, error: err.message })
+            Log.log('mole', 'installer trash failed:', target, err.message)
+        }
+    }
+
+    History.record({
+        operation: 'installer',
+        startedAt,
+        success: failed.length === 0,
+        error: failed.length ? `${failed.length} file(s) failed` : null,
+        targets: trashed
+    })
+    return { trashed, failed }
+}
+
+// ============================================================
+// Mole history + capabilities (piped, structured output)
+// ============================================================
+
+function execMoleJson(args) {
+    const molePath = resolveMolePath()
+    if (!molePath) return Promise.reject(new Error('mole_not_found'))
+    return new Promise((resolve, reject) => {
+        execFile(molePath, args, { env: buildEnv(), maxBuffer: 32 * 1024 * 1024 }, (err, stdout) => {
+            if (err) return reject(err)
+            try {
+                resolve(JSON.parse(stdout))
+            } catch {
+                reject(new Error('invalid_json_output'))
+            }
+        })
+    })
+}
+
+async function moleHistory() {
+    const data = await execMoleJson(['history', '--json', '--limit', '200'])
+    return data
+}
+
+let cachedCapabilities = null
+
+function capabilities() {
+    if (cachedCapabilities) return Promise.resolve(cachedCapabilities)
+    const molePath = resolveMolePath()
+    if (!molePath) return Promise.resolve(null)
+    return new Promise((resolve) => {
+        execFile(molePath, ['--help'], { env: buildEnv() }, (err, stdout, stderr) => {
+            // mo --help prints to stderr on some versions and may exit non-zero
+            const text = `${stdout || ''}\n${stderr || ''}`
+            cachedCapabilities = parseCapabilities(text)
+            Log.log('mole', 'capabilities:', JSON.stringify(cachedCapabilities))
+            resolve(cachedCapabilities)
+        })
+    })
 }
 
 function install(event) {
@@ -425,8 +627,16 @@ module.exports = {
     optimize,
     listUninstallApps,
     uninstall,
+    analyze,
+    purgePreview,
+    purgeRun,
+    installerList,
+    trashInstallers,
+    moleHistory,
+    capabilities,
     sendPassword,
     sendEnter,
     sendSkip,
-    cancel
+    cancel,
+    cancelScan
 }

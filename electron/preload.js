@@ -10,7 +10,10 @@ function listen(channel, cb) {
 contextBridge.exposeInMainWorld('system', {
     check: () => ipcRenderer.invoke('system:check'),
     stats: () => ipcRenderer.invoke('system:stats'),
-    disks: () => ipcRenderer.invoke('system:disks')
+    disks: () => ipcRenderer.invoke('system:disks'),
+    reveal: (target) => ipcRenderer.invoke('system:reveal', target),
+    open: (target) => ipcRenderer.invoke('system:open', target),
+    copy: (text) => ipcRenderer.invoke('system:copy', text)
 })
 
 // 'history' would collide with the built-in window.history and make
@@ -57,6 +60,25 @@ contextBridge.exposeInMainWorld('mole', {
     onUninstallStatus: (cb) => listen('mole:uninstall:status', cb),
     onUninstallPassword: (cb) => listen('mole:uninstall:password', cb),
     onUninstallEnd: (cb) => listen('mole:uninstall:end', cb),
+
+    analyze: (opts) => ipcRenderer.invoke('mole:analyze', opts),
+    onAnalyzeStatus: (cb) => listen('mole:analyze:status', cb),
+    cancelScan: () => ipcRenderer.send('mole:scan:cancel'),
+
+    purgePreview: () => ipcRenderer.invoke('mole:purge:preview'),
+    onPurgeScanStatus: (cb) => listen('mole:purge:scan-status', cb),
+    purgeRun: () => ipcRenderer.send('mole:purge:run'),
+    onPurgeLog: (cb) => listen('mole:purge:log', cb),
+    onPurgeStatus: (cb) => listen('mole:purge:status', cb),
+    onPurgePassword: (cb) => listen('mole:purge:password', cb),
+    onPurgeEnd: (cb) => listen('mole:purge:end', cb),
+
+    installerList: () => ipcRenderer.invoke('mole:installer:list'),
+    onInstallerScanStatus: (cb) => listen('mole:installer:scan-status', cb),
+    trashInstallers: (paths) => ipcRenderer.invoke('mole:installer:trash', paths),
+
+    history: () => ipcRenderer.invoke('mole:history'),
+    capabilities: () => ipcRenderer.invoke('mole:capabilities'),
 
     sendEnter: () => ipcRenderer.send('mole:send-enter'),
     sendSkip: () => ipcRenderer.send('mole:send-skip'),
