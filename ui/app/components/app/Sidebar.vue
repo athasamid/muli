@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import {
   AppWindow,
+  ChartPie,
+  Code2,
   Gauge,
   HardDrive,
   History,
   LayoutDashboard,
+  Package,
   Settings,
   Sparkles,
   Trash2,
@@ -14,21 +17,46 @@ import {
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from '@/components/ui/sidebar'
 
+// `cap` names the Mole capability a feature needs; items whose capability
+// is missing on the installed Mole render disabled.
+const capabilities = ref<Record<string, boolean> | null>(null)
+
+onMounted(async () => {
+  try {
+    capabilities.value = await (window as any).mole?.capabilities?.() ?? null
+  } catch {
+    capabilities.value = null
+  }
+})
+
+function unsupported(item: { cap?: string }) {
+  if (!item.cap || !capabilities.value) return false
+  return capabilities.value[item.cap] === false
+}
+
 const groups = [
   {
-    label: 'System',
+    label: 'Cleanup',
     items: [
       { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
-      { label: 'Clean', icon: Trash2, href: '/dashboard' },
-      { label: 'Uninstall', icon: AppWindow, href: '/uninstall' },
-      { label: 'Disk', icon: HardDrive, href: '/disk' },
-      { label: 'Optimize', icon: Gauge, href: '/optimize' },
+      { label: 'Smart Clean', icon: Trash2, href: '/dashboard', cap: 'clean' },
+      { label: 'Developer Files', icon: Code2, href: '/developer', cap: 'purge' },
+      { label: 'Installers', icon: Package, href: '/installer', cap: 'installer' },
     ],
   },
   {
-    label: 'Utilities',
+    label: 'Storage',
     items: [
-      { label: 'History', icon: History, href: '/history' },
+      { label: 'Storage Analyzer', icon: ChartPie, href: '/storage', cap: 'analyze' },
+      { label: 'Volumes', icon: HardDrive, href: '/disk' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { label: 'Uninstall Apps', icon: AppWindow, href: '/uninstall', cap: 'uninstall' },
+      { label: 'Optimize', icon: Gauge, href: '/optimize', cap: 'optimize' },
+      { label: 'History', icon: History, href: '/history', cap: 'history' },
     ],
   },
 ]
@@ -54,7 +82,7 @@ const groups = [
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="item in group.items" :key="item.label">
-              <NuxtLink v-if="!item.soon" :to="item.href">
+              <NuxtLink v-if="!unsupported(item)" :to="item.href">
                 <SidebarMenuButton
                   class="cursor-pointer"
                   :is-active="item.href === $route.path"
@@ -63,11 +91,11 @@ const groups = [
                   <span>{{ item.label }}</span>
                 </SidebarMenuButton>
               </NuxtLink>
-              <SidebarMenuButton v-else class="cursor-default opacity-50" disabled>
+              <SidebarMenuButton v-else class="cursor-default opacity-50" disabled title="This feature needs a newer version of Mole">
                 <component :is="item.icon" class="h-4 w-4" />
                 <span>{{ item.label }}</span>
                 <span class="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden">
-                  Soon
+                  Update Mole
                 </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
