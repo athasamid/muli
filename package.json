@@ -11,6 +11,7 @@
     "dist:mac": "npm run build:ui && electron-builder --mac",
     "test": "node --test tests/*.test.js",
     "release": "./scripts/release.sh",
+    "check:landing": "node scripts/check-landing.js",
     "deploy:landing": "./scripts/release.sh --landing-only",
     "postinstall": "electron-rebuild -f -w node-pty"
   },
